@@ -15,7 +15,7 @@ let consIndex = 0, consInput = "", consFeedback = null, consOk = 0;
 
 // Фразы Фиксика
 const FIXIK_PHRASES = {
-  start: "Привет! Я Фиксик. Помогу тебе разобраться с корнями. Поехали!",
+  start: "Привет! Я твой Фиксик. Помогу разобраться с корнями. Поехали!",
   gameStart: "Вспомни правило: корень произведения равен произведению корней. Но есть ловушки!",
   error: "Ой! Кажется, здесь спряталась ловушка. Давай посмотрим внимательнее.",
   success: "Супер! Ты отлично справляешься. Я в тебя верю!",
@@ -34,13 +34,18 @@ function el(tag, cls, text) {
 }
 function clear() { app.innerHTML = ""; }
 
-// Компонент Фиксика
+// Компонент Фиксика с картинкой
 function renderFixik(text, mood = "normal") {
   const box = el("div", "fixik-box");
   if (mood === "success") box.classList.add("success");
   if (mood === "error") box.classList.add("error");
   
-  const avatar = el("div", "fixik-avatar", "🧑‍🔧"); // Фиксик с гаечным ключом
+  const avatar = el("div", "fixik-avatar");
+  const img = document.createElement("img");
+  img.src = "fixik.png"; // Наша картинка
+  img.alt = "Фиксик";
+  avatar.appendChild(img);
+  
   const speech = el("div", "fixik-speech", text);
   
   box.appendChild(avatar);
