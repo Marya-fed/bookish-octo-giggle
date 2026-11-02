@@ -3,7 +3,6 @@ const Progress = {
   load() {
     try {
       const data = JSON.parse(localStorage.getItem("math_tutor_progress"));
-      // Если данных нет или они старого формата (без массивов), создаем новые
       if (!data || !Array.isArray(data.completed) || !Array.isArray(data.unlocked)) {
         return { completed: [], diagnostic_passed: false, unlocked: [1] };
       }
@@ -14,16 +13,15 @@ const Progress = {
   },
   save(p) { localStorage.setItem("math_tutor_progress", JSON.stringify(p)); }
 };
-};
 
 // ---------- СОСТОЯНИЕ ----------
 let lesson = null;
-let stage = "welcome"; // стартуем с приветствия
+let stage = "welcome"; 
 let gameState = null;
 let consIndex = 0, consInput = "", consFeedback = null, consOk = 0;
 let animFrameId = null;
 
-// ---------- ДАННЫЕ ДЛЯ КАРТЫ ----------
+// ---------- СПИСОК УРОКОВ ----------
 const LESSONS_LIST = [
   { id: 1, title: "Степени", desc: "Свойства степеней" },
   { id: 2, title: "Кв. уравнения", desc: "Виета и дискриминант" },
@@ -39,7 +37,7 @@ const LESSONS_LIST = [
   { id: 12, title: "Финал", desc: "Итоговое закрепление" }
 ];
 
-// ---------- 10 ВОПРОСОВ ДИАГНОСТИКИ ----------
+// ---------- ДИАГНОСТИКА ----------
 const DIAGNOSTIC_QUESTIONS = [
   { question: "Чему равно значение выражения √(4 · 9)?", options: ["13", "6", "36"], correct: 1, topic: "Свойства корня", lessonId: 6 },
   { question: "Вычисли: 2³ · 2²", options: ["2⁵", "2⁶", "4⁵"], correct: 0, topic: "Степени", lessonId: 1 },
@@ -54,7 +52,7 @@ const DIAGNOSTIC_QUESTIONS = [
 ];
 let diagIndex = 0;
 
-// ---------- ФРАЗЫ ФИКСИКА ----------
+// ---------- ФРАЗЫ ----------
 const FIXIK_PHRASES = {
   welcome: "Привет, Федя! Я Фиксик. Чтобы я понял, какие темы тебе нужно подтянуть, давай пройдем диагностику из 10 вопросов. Готов?",
   diagCorrect: "Верно! Отличная работа.",
@@ -71,7 +69,7 @@ const FIXIK_PHRASES = {
 
 const app = document.getElementById("app");
 
-// ---------- СИСТЕМА ЗАЩИТЫ ----------
+// ---------- ЗАЩИТА ОТ СПИСЫВАНИЯ ----------
 function showWarning() {
   if (document.getElementById("copy-warning")) return;
   const overlay = document.createElement("div");
@@ -122,7 +120,7 @@ function evaluate(task, input) {
   return {ok: false, msg: "Пока не так. " + task.error_feedback};
 }
 
-// ---------- ЭКРАНЫ ДИАГНОСТИКИ ----------
+// ---------- ДИАГНОСТИКА ----------
 function drawWelcome() {
   clear();
   app.appendChild(renderFixik(FIXIK_PHRASES.welcome));
@@ -191,7 +189,7 @@ function drawDiagDone() {
   app.appendChild(btn);
 }
 
-// ---------- ГЛАВНЫЙ ЭКРАН (КАРТА) ----------
+// ---------- КАРТА ----------
 function drawHome() {
   clear();
   app.appendChild(renderFixik(FIXIK_PHRASES.start));
@@ -230,7 +228,7 @@ function drawHome() {
   app.appendChild(grid);
 }
 
-// ---------- ЭКРАНЫ УРОКА ----------
+// ---------- УРОК ----------
 function drawExplain() {
   clear();
   app.appendChild(renderFixik(FIXIK_PHRASES.start));
@@ -519,7 +517,6 @@ function start3DAnimation(canvas) {
   animate();
 }
 
-// ---------- ЗАПУСК ----------
 function render() {
   if (stage === "welcome") drawWelcome();
   else if (stage === "diagnostic") drawDiagnostic();
@@ -531,6 +528,7 @@ function render() {
   else if (stage === "done") drawDone();
 }
 
+// ---------- СТАРТ ----------
 const savedProgress = Progress.load();
 if (savedProgress.diagnostic_passed) {
   stage = "home"; 
