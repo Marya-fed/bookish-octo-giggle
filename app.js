@@ -14,7 +14,6 @@ let gameState = null;
 let consIndex = 0, consInput = "", consFeedback = null, consOk = 0;
 let animFrameId = null;
 
-// Фразы Фиксика
 const FIXIK_PHRASES = {
   start: "Привет! Я твой Фиксик. Помогу разобраться с корнями. Поехали!",
   gameStart: "Вспомни правило: корень произведения равен произведению корней. Но есть ловушки!",
@@ -27,6 +26,79 @@ const FIXIK_PHRASES = {
 
 const app = document.getElementById("app");
 
+// --- СИСТЕМА ЗАЩИТЫ ОТ КОПИРОВАНИЯ ---
+function showWarning() {
+  // Проверяем, нет ли уже таблички, чтобы не спамить
+  if (document.getElementById("copy-warning")) return;
+
+  // Создаем затемнение фона
+  const overlay = document.createElement("div");
+  overlay.id = "copy-warning";
+  overlay.style.position = "fixed";
+  overlay.style.top = "0"; overlay.style.left = "0";
+  overlay.style.width = "100vw"; overlay.style.height = "100vh";
+  overlay.style.backgroundColor = "rgba(0,0,0,0.6)";
+  overlay.style.display = "flex";
+  overlay.style.alignItems = "center";
+  overlay.style.justifyContent = "center";
+  overlay.style.zIndex = "9999";
+  overlay.style.backdropFilter = "blur(4px)";
+
+  // Сама табличка
+  const box = document.createElement("div");
+  box.style.background = "#fff";
+  box.style.padding = "30px 20px";
+  box.style.borderRadius = "20px";
+  box.style.textAlign = "center";
+  box.style.border = "4px solid #ff4d4d";
+  box.style.boxShadow = "0 10px 30px rgba(0,0,0,0.3)";
+  box.style.maxWidth = "90%";
+  box.style.animation = "shake 0.5s"; // Берем анимацию из style.css
+
+  const emoji = document.createElement("div");
+  emoji.textContent = "🚫";
+  emoji.style.fontSize = "60px";
+  emoji.style.marginBottom = "10px";
+
+  const title = document.createElement("h2");
+  title.textContent = "Федя, думай сам!";
+  title.style.color = "#d32f2f";
+  title.style.fontSize = "28px";
+  title.style.margin = "0 0 10px 0";
+  title.style.fontWeight = "900";
+
+  const text = document.createElement("p");
+  text.textContent = "Списывать из интернета или нейросетей нельзя. Реши задачу самостоятельно — я в тебя верю!";
+  text.style.color = "#333";
+  text.style.fontSize = "16px";
+  text.style.margin = "0 0 20px 0";
+
+  const btn = document.createElement("button");
+  btn.textContent = "Я всё понял";
+  btn.style.padding = "12px 24px";
+  btn.style.background = "#ff4d4f";
+  btn.style.color = "#fff";
+  btn.style.border = "none";
+  btn.style.borderRadius = "10px";
+  btn.style.fontSize = "16px";
+  btn.style.fontWeight = "bold";
+  btn.style.cursor = "pointer";
+  
+  btn.onclick = () => overlay.remove();
+
+  box.appendChild(emoji);
+  box.appendChild(title);
+  box.appendChild(text);
+  box.appendChild(btn);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+
+// Блокируем глобальные попытки копирования/вставки (на всякий случай)
+document.addEventListener('copy', (e) => { e.preventDefault(); showWarning(); });
+document.addEventListener('paste', (e) => { e.preventDefault(); showWarning(); });
+
+// ---------- утилиты ----------
 function el(tag, cls, text) {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -47,6 +119,8 @@ function renderFixik(text, mood = "normal") {
   const img = document.createElement("img");
   img.src = "fixik.png"; 
   img.alt = "Фиксик";
+  // Защита от перетаскивания картинки
+  img.ondragstart = () => false; 
   avatar.appendChild(img);
   
   const speech = el("div", "fixik-speech", text);
@@ -209,6 +283,18 @@ function drawConsolidation() {
 
   const inp = document.createElement("input");
   inp.type = "text"; inp.placeholder = "Введи ответ или объяснение"; inp.value = consInput;
+  
+  // --- БЛОКИРОВКА ВСТАВКИ В САМОМ ПОЛЕ ---
+  inp.onpaste = (e) => {
+    e.preventDefault();
+    showWarning();
+  };
+  // Блокировка контекстного меню на поле ввода (чтобы не было "Вставить")
+  inp.oncontextmenu = (e) => {
+    e.preventDefault();
+    showWarning();
+  };
+
   inp.oninput = (e) => { consInput = e.target.value; };
   inp.onkeydown = (e) => { if (e.key === "Enter") submitCons(); };
   app.appendChild(inp);
@@ -256,28 +342,20 @@ function submitCons() {
 // ==========================================
 function drawDone() {
   clear();
-  // Оставляем реплику Фиксика вверху
   app.appendChild(renderFixik(FIXIK_PHRASES.done, "success"));
-  
   app.appendChild(el("h1", "center", "Урок закрыт!"));
   
-  // Контейнер для мультфильма
   const canvasContainer = el("div", "card");
-  canvasContainer.style.padding = "0";
-  canvasContainer.style.overflow = "hidden";
-  canvasContainer.style.display = "flex";
-  canvasContainer.style.justifyContent = "center";
-  canvasContainer.style.background = "#87CEEB"; // Небо
+  canvasContainer.style.padding = "0"; canvasContainer.style.overflow = "hidden";
+  canvasContainer.style.display = "flex"; canvasContainer.style.justifyContent = "center";
+  canvasContainer.style.background = "#87CEEB";
   
   const canvas = document.createElement("canvas");
-  canvas.width = 600;
-  canvas.height = 300;
-  canvas.style.width = "100%";
-  canvas.style.maxWidth = "600px";
+  canvas.width = 600; canvas.height = 300;
+  canvas.style.width = "100%"; canvas.style.maxWidth = "600px";
   canvasContainer.appendChild(canvas);
   app.appendChild(canvasContainer);
 
-  // Кнопка "Забрать награду"
   const btn = el("button", "btn green", "Забрать награду 🏅");
   btn.onclick = () => {
     clear();
@@ -286,15 +364,13 @@ function drawDone() {
   };
   app.appendChild(btn);
 
-  // Запускаем анимацию
   startAnimation(canvas);
 }
 
 function startAnimation(canvas) {
   const ctx = canvas.getContext("2d");
-  let t = 0; // Время анимации
+  let t = 0; 
 
-  // Загружаем картинку Фиксика для отрисовки на холсте
   const fixikImg = new Image();
   fixikImg.src = "fixik.png";
 
@@ -303,25 +379,21 @@ function startAnimation(canvas) {
     ctx.translate(x, y);
     ctx.scale(scale, scale);
     
-    // Тело (куртка)
-    ctx.fillStyle = "#4A90E2"; // Синяя куртка
+    ctx.fillStyle = "#4A90E2"; 
     ctx.beginPath();
     ctx.roundRect(-15, 0, 30, 40, 10);
     ctx.fill();
     
-    // Голова
-    ctx.fillStyle = "#FFDFC4"; // Кожа
+    ctx.fillStyle = "#FFDFC4"; 
     ctx.beginPath();
     ctx.arc(0, -15, 14, 0, Math.PI * 2);
     ctx.fill();
     
-    // Волосы
     ctx.fillStyle = "#5C4033";
     ctx.beginPath();
     ctx.arc(0, -20, 14, Math.PI, 0);
     ctx.fill();
     
-    // Рюкзак (если лезет)
     if (isClimbing) {
       ctx.fillStyle = "#E74C3C";
       ctx.beginPath();
@@ -332,7 +404,6 @@ function startAnimation(canvas) {
   }
 
   function drawMedal(ctx, x, y) {
-    // Ленточка
     ctx.fillStyle = "#E74C3C";
     ctx.beginPath();
     ctx.moveTo(x - 10, y - 20);
@@ -340,13 +411,11 @@ function startAnimation(canvas) {
     ctx.lineTo(x, y);
     ctx.fill();
     
-    // Круг медали
     ctx.fillStyle = "#F1C40F";
     ctx.beginPath();
     ctx.arc(x, y + 10, 15, 0, Math.PI * 2);
     ctx.fill();
     
-    // Блик
     ctx.fillStyle = "#F9E79F";
     ctx.beginPath();
     ctx.arc(x - 5, y + 5, 5, 0, Math.PI * 2);
@@ -354,26 +423,22 @@ function startAnimation(canvas) {
   }
 
   function animate() {
-    // Очищаем фон (небо)
     ctx.fillStyle = "#87CEEB";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Рисуем солнце (с анимацией пульсации)
     ctx.fillStyle = "rgba(255, 255, 0, 0.8)";
     ctx.beginPath();
     const sunScale = 1 + Math.sin(t * 0.05) * 0.1;
     ctx.arc(500, 60, 30 * sunScale, 0, Math.PI * 2);
     ctx.fill();
 
-    // Рисуем горку (треугольник)
-    ctx.fillStyle = "#2ECC71"; // Зеленая трава
+    ctx.fillStyle = "#2ECC71"; 
     ctx.beginPath();
     ctx.moveTo(0, 300);
     ctx.lineTo(400, 100);
     ctx.lineTo(600, 300);
     ctx.fill();
 
-    // Снежная вершина
     ctx.fillStyle = "#FFFFFF";
     ctx.beginPath();
     ctx.moveTo(350, 150);
@@ -384,23 +449,13 @@ function startAnimation(canvas) {
     ctx.lineTo(380, 140);
     ctx.fill();
 
-    // --- АНИМАЦИЯ ПЕРСОНАЖЕЙ ---
-    
-    // Тайминги:
-    // 0 - 100: Федя поднимается (едет по склону)
-    // 100 - 200: Фиксик появляется с медалью
-    // 200 - 300: Вручение и фейерверк
-
     if (t < 100) {
-      // Федя едет вверх
-      const progress = t / 100; // от 0 до 1
-      // Координаты от подножия (150, 300) до вершины (380, 130)
+      const progress = t / 100; 
       const bx = 150 + (380 - 150) * progress;
       const by = 300 - (300 - 130) * progress;
       
       drawBoy(ctx, bx, by, 1, true);
       
-      // Пыль из-под ног
       if (t % 10 === 0) {
           ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
           ctx.beginPath();
@@ -408,16 +463,13 @@ function startAnimation(canvas) {
           ctx.fill();
       }
     } else {
-      // Федя стоит на вершине
       drawBoy(ctx, 380, 130, 1, false);
       
-      // Фиксик вылетает слева сверху
       if (t > 100) {
-        const fixikProgress = Math.min((t - 100) / 50, 1); // от 0 до 1
+        const fixikProgress = Math.min((t - 100) / 50, 1); 
         const fx = 50 + (300 - 50) * fixikProgress;
-        const fy = 50 + Math.sin(t * 0.1) * 10; // Парение
+        const fy = 50 + Math.sin(t * 0.1) * 10; 
         
-        // Рисуем Фиксика (картинку) или запасной круг, если картинка не загрузилась
         if (fixikImg.complete && fixikImg.naturalWidth > 0) {
             ctx.drawImage(fixikImg, fx - 40, fy - 40, 80, 80);
         } else {
@@ -427,14 +479,12 @@ function startAnimation(canvas) {
             ctx.fill();
         }
 
-        // Появление медали
         if (t > 150) {
            const medalY = fy + 40 + ((t - 150) / 50) * 20;
            drawMedal(ctx, fx + 20, Math.min(medalY, fy + 60));
         }
       }
 
-      // Фейерверк в конце
       if (t > 200) {
           if (t % 20 === 0) {
               const colors = ["#FF5733", "#33FF57", "#3357FF", "#F1C40F", "#9B59B6"];
@@ -450,7 +500,6 @@ function startAnimation(canvas) {
       }
     }
 
-    // Текст поздравления
     if (t > 200) {
         ctx.fillStyle = "#232832";
         ctx.font = "bold 24px Arial";
@@ -476,6 +525,6 @@ fetch("lesson_06.json")
   .then(r => r.json())
   .then(data => { lesson = data; render(); })
   .catch(err => {
-    app.innerHTML = "<h1>Ошибка загрузки</h1><p>Не удалось загрузить lesson_06.json. Убедись, что файл лежит рядом с index.html и открываешь через http-сервер, а не file://</p>";
+    app.innerHTML = "<h1>Ошибка загрузки</h1><p>Не удалось загрузить lesson_06.json.</p>";
     console.error(err);
   });
