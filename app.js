@@ -1,20 +1,47 @@
 // ---------- прогресс ----------
 const Progress = {
   load() {
-    try { return JSON.parse(localStorage.getItem("math_tutor_progress")) || {completed: []}; }
-    catch { return {completed: []}; }
+    try { 
+      return JSON.parse(localStorage.getItem("math_tutor_progress")) || {completed: [], diagnostic_passed: false, unlocked: [6]}; 
+    }
+    catch { return {completed: [], diagnostic_passed: false, unlocked: [6]}; }
   },
   save(p) { localStorage.setItem("math_tutor_progress", JSON.stringify(p)); }
 };
 
 // ---------- состояние ----------
 let lesson = null;
-let stage = "home"; // Теперь стартуем с главного экрана (Карты)
+let stage = "welcome"; // Стартуем с приветствия
 let gameState = null;
 let consIndex = 0, consInput = "", consFeedback = null, consOk = 0;
 let animFrameId = null;
 
-// Данные для карты уроков (пока рабочий только Урок 6)
+// Вопросы для диагностики
+const DIAGNOSTIC_QUESTIONS = [
+  {
+    question: "Чему равно значение выражения √(4 · 9)?",
+    options: ["13", "6", "36"],
+    correct: 1, // Индекс правильного ответа (6)
+    topic: "Корни",
+    lessonId: 6
+  },
+  {
+    question: "Реши уравнение: x² - 5x + 6 = 0",
+    options: ["x=1, x=6", "x=2, x=3", "x=-2, x=-3"],
+    correct: 1, // (2 и 3)
+    topic: "Кв. уравнения",
+    lessonId: 2
+  },
+  {
+    question: "Найди область определения функции y = √(x - 3)",
+    options: ["x > 3", "x ≥ 3", "x < 3"],
+    correct: 1, // x ≥ 3
+    topic: "Область определения",
+    lessonId: 4
+  }
+];
+let diagIndex = 0;
+
 const LESSONS_LIST = [
   { id: 1, title: "Степени", desc: "Свойства степеней" },
   { id: 2, title: "Кв. уравнения", desc: "Виета и дискриминант" },
@@ -31,7 +58,11 @@ const LESSONS_LIST = [
 ];
 
 const FIXIK_PHRASES = {
-  start: "Привет! Я твой Фиксик. Выбирай доступный урок на карте и погнали!",
+  welcome: "Привет, Федя! Я Фиксик. Чтобы я понял, какие темы тебе нужно подтянуть, давай пройдем короткую диагностику. Готов?",
+  diagCorrect: "Верно! Отличная работа.",
+  diagWrong: "Почти! Но здесь есть пробел, мы это исправим.",
+  diagDone: "Диагностика пройдена! Я составил для тебя индивидуальный план. Смотри на карту!",
+  start: "Выбирай доступный урок на карте и погнали!",
   gameStart: "Вспомни правило: корень произведения равен произведению корней. Но есть ловушки!",
   error: "Ой! Кажется, здесь спряталась ловушка. Давай посмотрим внимательнее.",
   success: "Супер! Ты отлично справляешься. Я в тебя верю!",
@@ -95,6 +126,85 @@ function evaluate(task, input) {
   return {ok: false, msg: "Пока не так. " + task.error_feedback};
 }
 
+// ---------- ЭКРАНЫ ДИАГНОСТИКИ ----------
+function drawWelcome() {
+  clear();
+  app.appendChild(renderFixik(FIXIK_PHRASES.welcome));
+  app.appendChild(el("h1", "center", "Добро пожаловать!"));
+  
+  const card = el("div", "card");
+  card.appendChild(el("p", "", "Сейчас мы выполним 3 задания, чтобы найти твои сильные стороны и темы, над которыми нужно поработать."));
+  app.appendChild(card);
+
+  const btn = el("button", "btn", "Начать диагностику 🚀");
+  btn.onclick = () => { stage = "diagnostic"; diagIndex = 0; render(); };
+  app.appendChild(btn);
+}
+
+function drawDiagnostic() {
+  clear();
+  app.appendChild(renderFixik("Вопрос " + (diagIndex + 1) + " из " + DIAGNOSTIC_QUESTIONS.length, "normal"));
+  
+  const q = DIAGNOSTIC_QUESTIONS[diagIndex];
+  app.appendChild(el("h1", "", "Проверка знаний"));
+  
+  const card = el("div", "card");
+  card.appendChild(el("p", "", q.question));
+  app.appendChild(card);
+
+  const optionsDiv = el("div", "cards");
+  optionsDiv.style.gridTemplateColumns = "1fr"; // кнопки в один столбец
+  
+  q.options.forEach((opt, idx) => {
+    const btn = el("div", "item", opt);
+    btn.style.padding = "16px";
+    btn.style.fontSize = "18px";
+    btn.onclick = () => {
+      const isCorrect = (idx === q.correct);
+      // Сохраняем прогресс
+      const p = Progress.load();
+      if (isCorrect) {
+        // Если ответил верно, но урока нет в разблокированных - можно не добавлять
+      } else {
+        // Если ошибся, разблокируем этот урок
+        if (!p.unlocked.includes(q.lessonId)) p.unlocked.push(q.lessonId);
+      }
+      Progress.save(p);
+
+      // Показываем фидбек
+      clear();
+      app.appendChild(renderFixik(isCorrect ? FIXIK_PHRASES.diagCorrect : FIXIK_PHRASES.diagWrong, isCorrect ? "success" : "error"));
+      
+      const btnNext = el("button", "btn", "Дальше →");
+      btnNext.onclick = () => {
+        diagIndex++;
+        if (diagIndex < DIAGNOSTIC_QUESTIONS.length) {
+          stage = "diagnostic"; render();
+        } else {
+          // Диагностика окончена
+          const p = Progress.load();
+          p.diagnostic_passed = true;
+          Progress.save(p);
+          stage = "diagDone"; render();
+        }
+      };
+      app.appendChild(btnNext);
+    };
+    optionsDiv.appendChild(btn);
+  });
+  app.appendChild(optionsDiv);
+}
+
+function drawDiagDone() {
+  clear();
+  app.appendChild(renderFixik(FIXIK_PHRASES.diagDone, "success"));
+  app.appendChild(el("h1", "center", "Диагностика завершена!"));
+  
+  const btn = el("button", "btn green", "Перейти к карте знаний 🗺️");
+  btn.onclick = () => { stage = "home"; render(); };
+  app.appendChild(btn);
+}
+
 // ---------- ГЛАВНЫЙ ЭКРАН (КАРТА) ----------
 function drawHome() {
   clear();
@@ -106,7 +216,7 @@ function drawHome() {
   
   LESSONS_LIST.forEach((item) => {
     const isCompleted = progress.completed.includes(item.id);
-    const isAvailable = (item.id === 6); // Пока доступен только 6-й
+    const isAvailable = progress.unlocked.includes(item.id); // Теперь смотрим на разблокированные
     
     const node = el("div", "map-node");
     if (isCompleted) node.classList.add("completed");
@@ -124,7 +234,7 @@ function drawHome() {
           .then(data => {
             lesson = data; stage = "explain"; render();
           })
-          .catch(err => alert("Файл этого урока еще не создан!"));
+          .catch(err => alert("Файл этого урока еще не создан! (Мы создали только 6-й)."));
       };
     }
     grid.appendChild(node);
@@ -291,7 +401,7 @@ function submitCons() {
 }
 
 // ==========================================
-// 3D-МУЛЬТФИЛЬМ (СУПЕРГЕРОЙ)
+// 3D-МУЛЬТФИЛЬМ
 // ==========================================
 function drawDone() {
   clear();
@@ -308,10 +418,7 @@ function drawDone() {
   app.appendChild(canvasContainer);
 
   const btn = el("button", "btn green", "Забрать награду 🏅");
-  btn.onclick = () => {
-    stage = "home"; // Возвращаем на карту!
-    render();
-  };
+  btn.onclick = () => { stage = "home"; render(); };
   app.appendChild(btn);
 
   start3DAnimation(canvas);
@@ -414,13 +521,9 @@ function start3DAnimation(canvas) {
                 ctx.fill();
             }
         }
-        ctx.font = "900 32px Arial";
-        ctx.textAlign = "center";
-        ctx.lineWidth = 6;
-        ctx.strokeStyle = "#fff";
-        ctx.strokeText("СУПЕРГЕРОЙ!", canvas.width / 2, 60);
-        ctx.fillStyle = "#E74C3C";
-        ctx.fillText("СУПЕРГЕРОЙ!", canvas.width / 2, 60);
+        ctx.font = "900 32px Arial"; ctx.textAlign = "center"; ctx.lineWidth = 6;
+        ctx.strokeStyle = "#fff"; ctx.strokeText("СУПЕРГЕРОЙ!", canvas.width / 2, 60);
+        ctx.fillStyle = "#E74C3C"; ctx.fillText("СУПЕРГЕРОЙ!", canvas.width / 2, 60);
     }
 
     t++;
@@ -430,12 +533,22 @@ function start3DAnimation(canvas) {
 }
 
 function render() {
-  if (stage === "home") drawHome();
+  if (stage === "welcome") drawWelcome();
+  else if (stage === "diagnostic") drawDiagnostic();
+  else if (stage === "diagDone") drawDiagDone();
+  else if (stage === "home") drawHome();
   else if (stage === "explain") drawExplain();
   else if (stage === "game") drawGame();
   else if (stage === "consolidation") drawConsolidation();
   else if (stage === "done") drawDone();
 }
 
-// Стартуем с главного экрана
+// Проверяем, проходил ли Федя уже диагностику (сохраняется в браузере)
+const savedProgress = Progress.load();
+if (savedProgress.diagnostic_passed) {
+  stage = "home"; // Если проходил - сразу на карту
+} else {
+  stage = "welcome"; // Если нет - на приветствие и диагностику
+}
+
 render();
