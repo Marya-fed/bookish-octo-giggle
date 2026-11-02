@@ -37,6 +37,7 @@ const LESSONS_LIST = [
   { id: 12, title: "Финал", desc: "Итоговое закрепление", reward: "🏆", rewardName: "Кубок" }
 ];
 
+// ---------- ДИАГНОСТИКА ----------
 const DIAGNOSTIC_QUESTIONS = [
   { question: "Чему равно значение выражения √(4 · 9)?", options: ["13", "6", "36"], correct: 1, topic: "Свойства корня", lessonId: 6 },
   { question: "Вычисли: 2³ · 2²", options: ["2⁵", "2⁶", "4⁵"], correct: 0, topic: "Степени", lessonId: 1 },
@@ -51,6 +52,7 @@ const DIAGNOSTIC_QUESTIONS = [
 ];
 let diagIndex = 0;
 
+// ---------- ФРАЗЫ ФИКСИКА ----------
 const FIXIK_PHRASES = {
   welcome: "Привет, Федя! Я Фиксик. Чтобы я понял, какие темы тебе нужно подтянуть, давай пройдем диагностику из 10 вопросов. Готов?",
   diagCorrect: "Верно! Отличная работа.",
@@ -67,7 +69,7 @@ const FIXIK_PHRASES = {
 
 const app = document.getElementById("app");
 
-// ---------- ЗАЩИТА ----------
+// ---------- ЗАЩИТА ОТ СПИСЫВАНИЯ ----------
 function showWarning() {
   if (document.getElementById("copy-warning")) return;
   const overlay = document.createElement("div");
@@ -225,7 +227,7 @@ function drawHome() {
   });
   app.appendChild(grid);
 
-  // --- БЛОК ИНВЕНТАРЯ (НАГРАДЫ) ---
+  // БЛОК ИНВЕНТАРЯ
   const invTitle = el("h2", "", "Твой инвентарь");
   invTitle.style.marginTop = "30px";
   invTitle.style.textAlign = "center";
@@ -233,17 +235,14 @@ function drawHome() {
   app.appendChild(invTitle);
 
   const inventoryGrid = el("div", "inventory-grid");
-  
   LESSONS_LIST.forEach(item => {
     const isCollected = progress.completed.includes(item.id);
     const slot = el("div", "inv-slot");
     if (isCollected) slot.classList.add("filled");
-    
     slot.appendChild(el("div", "inv-icon", isCollected ? item.reward : "❓"));
     slot.appendChild(el("div", "inv-name", item.rewardName));
     inventoryGrid.appendChild(slot);
   });
-  
   app.appendChild(inventoryGrid);
 }
 
@@ -436,29 +435,24 @@ function start3DAnimation(canvas, lessonId) {
   const fixikImg = new Image();
   fixikImg.src = "fixik.png";
 
-  // Смена биомов в зависимости от урока
   let bgColor = "#87CEEB";
   let groundColor = "#27AE60";
   let mountainColor = "#7F8C8D";
   
-  if (lessonId <= 2) { groundColor = "#95A5A6"; mountainColor = "#BDC3C7"; } // Камни
-  else if (lessonId <= 4) { groundColor = "#F1C40F"; mountainColor = "#F39C12"; } // Песок
-  else if (lessonId <= 6) { groundColor = "#2ECC71"; mountainColor = "#27AE60"; } // Трава
-  else if (lessonId <= 8) { groundColor = "#1ABC9C"; mountainColor = "#16A085"; } // Плато
-  else if (lessonId <= 10) { groundColor = "#3498DB"; mountainColor = "#2980B9"; } // Оазис (вода)
-  else { groundColor = "#ECF0F1"; mountainColor = "#BDC3C7"; } // Снег
+  if (lessonId <= 2) { groundColor = "#95A5A6"; mountainColor = "#BDC3C7"; } 
+  else if (lessonId <= 4) { groundColor = "#F1C40F"; mountainColor = "#F39C12"; } 
+  else if (lessonId <= 6) { groundColor = "#2ECC71"; mountainColor = "#27AE60"; } 
+  else if (lessonId <= 8) { groundColor = "#1ABC9C"; mountainColor = "#16A085"; } 
+  else if (lessonId <= 10) { groundColor = "#3498DB"; mountainColor = "#2980B9"; } 
+  else { groundColor = "#ECF0F1"; mountainColor = "#BDC3C7"; } 
 
   function drawSuperFedia(ctx, x, y, scale) {
     ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
-    // Плащ
     const capeWave = Math.sin(t * 0.1) * 10;
     ctx.fillStyle = "#E74C3C";
     ctx.beginPath(); ctx.moveTo(-10, 0); ctx.quadraticCurveTo(-40, 20 + capeWave, -60, 40 + capeWave); ctx.lineTo(-30, 50); ctx.lineTo(10, 10); ctx.fill();
-    // Костюм
     ctx.fillStyle = "#3498DB"; ctx.beginPath(); ctx.roundRect(-15, 0, 30, 45, 8); ctx.fill();
-    // Голова
     ctx.fillStyle = "#FFDFC4"; ctx.beginPath(); ctx.arc(0, -15, 14, 0, Math.PI * 2); ctx.fill();
-    // Маска
     ctx.fillStyle = "#2C3E50"; ctx.beginPath(); ctx.arc(0, -18, 14, Math.PI, 0); ctx.fill();
     ctx.fillStyle = "#FFF"; ctx.beginPath(); ctx.arc(-6, -16, 4, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(6, -16, 4, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
@@ -466,26 +460,16 @@ function start3DAnimation(canvas, lessonId) {
 
   function animate() {
     ctx.fillStyle = bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Солнце
     ctx.fillStyle = "#FFF9C4"; ctx.beginPath(); ctx.arc(500, 60, 30 + Math.sin(t*0.05)*5, 0, Math.PI*2); ctx.fill();
-    
-    // Земля
     ctx.fillStyle = groundColor; 
     ctx.beginPath(); ctx.moveTo(0, 280); ctx.quadraticCurveTo(300, 230, 600, 280); ctx.lineTo(600, 350); ctx.lineTo(0, 350); ctx.fill();
-    
-    // Гора
     ctx.fillStyle = mountainColor; 
     ctx.beginPath(); ctx.moveTo(200, 300); ctx.lineTo(400, 150); ctx.lineTo(600, 300); ctx.fill();
-
-    // Пьедестал
     ctx.fillStyle = "#BDC3C7"; ctx.fillRect(350, 250, 100, 100);
     
-    // Федя прыгает на вершине
     const jump = Math.max(0, Math.sin(t * 0.1) * 20);
     drawSuperFedia(ctx, 400, 230 - jump, 1.5);
 
-    // Фиксик приносит награду (появляется с 60 кадра)
     if (t > 60) {
       let fixikX = 150 + ((t - 60) / 40) * 180;
       if (fixikX > 330) fixikX = 330;
@@ -496,7 +480,6 @@ function start3DAnimation(canvas, lessonId) {
         ctx.fillStyle = "#00BFFF"; ctx.beginPath(); ctx.arc(fixikX + 40, 240, 30, 0, Math.PI * 2); ctx.fill();
       }
       
-      // Летящая награда
       if (t > 100) {
         const rewardProgress = Math.min((t - 100) / 30, 1);
         const rx = 330 + 40 + (400 - (330 + 40)) * rewardProgress;
