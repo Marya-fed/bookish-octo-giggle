@@ -9,13 +9,29 @@ const Progress = {
 
 // ---------- состояние ----------
 let lesson = null;
-let stage = "explain"; 
+let stage = "home"; // Теперь стартуем с главного экрана (Карты)
 let gameState = null;
 let consIndex = 0, consInput = "", consFeedback = null, consOk = 0;
 let animFrameId = null;
 
+// Данные для карты уроков (пока рабочий только Урок 6)
+const LESSONS_LIST = [
+  { id: 1, title: "Степени", desc: "Свойства степеней" },
+  { id: 2, title: "Кв. уравнения", desc: "Виета и дискриминант" },
+  { id: 3, title: "Неравенства", desc: "Метод интервалов" },
+  { id: 4, title: "Область опр.", desc: "Ограничения корня" },
+  { id: 5, title: "Корень n-й ст.", desc: "Понятие корня" },
+  { id: 6, title: "Свойства корня", desc: "Урок 1-й четверти" },
+  { id: 7, title: "Иррациональные", desc: "Преобразования" },
+  { id: 8, title: "Аксиомы", desc: "Стереометрия" },
+  { id: 9, title: "Параллельность", desc: "Прямая и плоскость" },
+  { id: 10, title: "Плоскости", desc: "Параллельные плоскости" },
+  { id: 11, title: "Практикум", desc: "Алгебра + Геометрия" },
+  { id: 12, title: "Финал", desc: "Итоговое закрепление" }
+];
+
 const FIXIK_PHRASES = {
-  start: "Привет! Я твой Фиксик. Помогу разобраться с корнями. Поехали!",
+  start: "Привет! Я твой Фиксик. Выбирай доступный урок на карте и погнали!",
   gameStart: "Вспомни правило: корень произведения равен произведению корней. Но есть ловушки!",
   error: "Ой! Кажется, здесь спряталась ловушка. Давай посмотрим внимательнее.",
   success: "Супер! Ты отлично справляешься. Я в тебя верю!",
@@ -32,21 +48,13 @@ function showWarning() {
   const overlay = document.createElement("div");
   overlay.id = "copy-warning";
   overlay.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(4px);";
-  
   const box = document.createElement("div");
   box.style.cssText = "background:#fff;padding:30px 20px;border-radius:20px;text-align:center;border:4px solid #ff4d4d;box-shadow:0 10px 30px rgba(0,0,0,0.3);max-width:90%;animation:shake 0.5s;";
-  
-  box.innerHTML = `
-    <div style="font-size:60px;margin-bottom:10px;">🚫</div>
-    <h2 style="color:#d32f2f;font-size:28px;margin:0 0 10px 0;font-weight:900;">Федя, думай сам!</h2>
-    <p style="color:#333;font-size:16px;margin:0 0 20px 0;">Списывать из интернета или нейросетей нельзя. Реши задачу самостоятельно — я в тебя верю!</p>
-    <button id="close-warning" style="padding:12px 24px;background:#ff4d4f;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;">Я всё понял</button>
-  `;
+  box.innerHTML = `<div style="font-size:60px;margin-bottom:10px;">🚫</div><h2 style="color:#d32f2f;font-size:28px;margin:0 0 10px 0;font-weight:900;">Федя, думай сам!</h2><p style="color:#333;font-size:16px;margin:0 0 20px 0;">Списывать из интернета или нейросетей нельзя. Реши задачу самостоятельно — я в тебя верю!</p><button id="close-warning" style="padding:12px 24px;background:#ff4d4f;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;">Я всё понял</button>`;
   overlay.appendChild(box);
   document.body.appendChild(overlay);
   document.getElementById("close-warning").onclick = () => overlay.remove();
 }
-
 document.addEventListener('copy', (e) => { e.preventDefault(); showWarning(); });
 document.addEventListener('paste', (e) => { e.preventDefault(); showWarning(); });
 
@@ -66,17 +74,12 @@ function renderFixik(text, mood = "normal") {
   const box = el("div", "fixik-box");
   if (mood === "success") box.classList.add("success");
   if (mood === "error") box.classList.add("error");
-  
   const avatar = el("div", "fixik-avatar");
   const img = document.createElement("img");
-  img.src = "fixik.png"; 
-  img.alt = "Фиксик";
-  img.ondragstart = () => false; 
+  img.src = "fixik.png"; img.alt = "Фиксик"; img.ondragstart = () => false; 
   avatar.appendChild(img);
-  
   const speech = el("div", "fixik-speech", text);
-  box.appendChild(avatar);
-  box.appendChild(speech);
+  box.appendChild(avatar); box.appendChild(speech);
   return box;
 }
 
@@ -92,7 +95,44 @@ function evaluate(task, input) {
   return {ok: false, msg: "Пока не так. " + task.error_feedback};
 }
 
-// ---------- экраны ----------
+// ---------- ГЛАВНЫЙ ЭКРАН (КАРТА) ----------
+function drawHome() {
+  clear();
+  app.appendChild(renderFixik(FIXIK_PHRASES.start));
+  app.appendChild(el("h1", "center", "Карта знаний"));
+  
+  const progress = Progress.load();
+  const grid = el("div", "map-grid");
+  
+  LESSONS_LIST.forEach((item) => {
+    const isCompleted = progress.completed.includes(item.id);
+    const isAvailable = (item.id === 6); // Пока доступен только 6-й
+    
+    const node = el("div", "map-node");
+    if (isCompleted) node.classList.add("completed");
+    else if (isAvailable) node.classList.add("current");
+    else node.classList.add("locked");
+
+    node.appendChild(el("div", "map-icon", isCompleted ? "✅" : (isAvailable ? "🚀" : "🔒")));
+    node.appendChild(el("div", "map-title", `Урок ${item.id}`));
+    node.appendChild(el("div", "map-desc", item.title));
+
+    if (isAvailable || isCompleted) {
+      node.onclick = () => {
+        fetch(`lesson_${String(item.id).padStart(2, '0')}.json`)
+          .then(r => r.json())
+          .then(data => {
+            lesson = data; stage = "explain"; render();
+          })
+          .catch(err => alert("Файл этого урока еще не создан!"));
+      };
+    }
+    grid.appendChild(node);
+  });
+  app.appendChild(grid);
+}
+
+// ---------- ЭКРАНЫ УРОКА ----------
 function drawExplain() {
   clear();
   app.appendChild(renderFixik(FIXIK_PHRASES.start));
@@ -106,6 +146,11 @@ function drawExplain() {
   const btn = el("button", "btn", "Понятно, дальше →");
   btn.onclick = () => { stage = "game"; initGame(); render(); };
   app.appendChild(btn);
+
+  const backBtn = el("button", "btn", "← Назад на карту");
+  backBtn.style.cssText = "background:transparent;color:#5b6475;box-shadow:none;margin-top:8px;";
+  backBtn.onclick = () => { stage = "home"; render(); };
+  app.appendChild(backBtn);
 }
 
 function initGame() {
@@ -246,7 +291,7 @@ function submitCons() {
 }
 
 // ==========================================
-// 3D-МУЛЬТФИЛЬМ: СУПЕРГЕРОЙ ФЕДЯ И НАГРАДА
+// 3D-МУЛЬТФИЛЬМ (СУПЕРГЕРОЙ)
 // ==========================================
 function drawDone() {
   clear();
@@ -264,9 +309,8 @@ function drawDone() {
 
   const btn = el("button", "btn green", "Забрать награду 🏅");
   btn.onclick = () => {
-    clear();
-    app.appendChild(renderFixik("Ты справился! Прогресс сохранен. До встречи на следующем уроке!", "success"));
-    app.appendChild(el("h1", "center", "Уровень пройден!"));
+    stage = "home"; // Возвращаем на карту!
+    render();
   };
   app.appendChild(btn);
 
@@ -279,167 +323,85 @@ function start3DAnimation(canvas) {
   const fixikImg = new Image();
   fixikImg.src = "fixik.png";
 
-  // Функция рисования Феди в плаще (объемный стиль)
   function drawSuperFedia(ctx, x, y, scale, step) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(scale, scale);
-
-    // Плащ супергероя (развевается)
+    ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
     const capeWave = Math.sin(t * 0.1) * 10;
     const gradientCape = ctx.createLinearGradient(-20, 0, -60, 40);
-    gradientCape.addColorStop(0, "#E74C3C");
-    gradientCape.addColorStop(1, "#922B21");
+    gradientCape.addColorStop(0, "#E74C3C"); gradientCape.addColorStop(1, "#922B21");
     ctx.fillStyle = gradientCape;
-    ctx.beginPath();
-    ctx.moveTo(-10, 0);
-    ctx.quadraticCurveTo(-40, 20 + capeWave, -60, 40 + capeWave);
-    ctx.lineTo(-30, 50);
-    ctx.lineTo(10, 10);
-    ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-10, 0); ctx.quadraticCurveTo(-40, 20 + capeWave, -60, 40 + capeWave); ctx.lineTo(-30, 50); ctx.lineTo(10, 10); ctx.fill();
 
-    // Тело (супергеройский костюм)
     const gradientSuit = ctx.createLinearGradient(0, 0, 0, 50);
-    gradientSuit.addColorStop(0, "#3498DB");
-    gradientSuit.addColorStop(1, "#2874A6");
+    gradientSuit.addColorStop(0, "#3498DB"); gradientSuit.addColorStop(1, "#2874A6");
     ctx.fillStyle = gradientSuit;
-    ctx.beginPath();
-    ctx.roundRect(-15, 0, 30, 45, 8);
-    ctx.fill();
+    ctx.beginPath(); ctx.roundRect(-15, 0, 30, 45, 8); ctx.fill();
 
-    // Эмблема на груди (молния)
     ctx.fillStyle = "#F1C40F";
-    ctx.beginPath();
-    ctx.moveTo(0, 10);
-    ctx.lineTo(5, 20);
-    ctx.lineTo(-2, 20);
-    ctx.lineTo(2, 30);
-    ctx.lineTo(-5, 18);
-    ctx.lineTo(1, 18);
-    ctx.fill();
+    ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(5, 20); ctx.lineTo(-2, 20); ctx.lineTo(2, 30); ctx.lineTo(-5, 18); ctx.lineTo(1, 18); ctx.fill();
 
-    // Руки (одна поднята в победном жесте)
     ctx.fillStyle = "#2874A6";
     ctx.beginPath(); ctx.roundRect(-20, 10, 8, 20, 4); ctx.fill();
-    ctx.beginPath(); ctx.roundRect(12, -5, 8, 20, 4); ctx.fill(); // Поднятая рука
+    ctx.beginPath(); ctx.roundRect(12, -5, 8, 20, 4); ctx.fill();
 
-    // Голова
     ctx.fillStyle = "#FFDFC4";
     ctx.beginPath(); ctx.arc(0, -15, 14, 0, Math.PI * 2); ctx.fill();
 
-    // Маска супергероя
     ctx.fillStyle = "#2C3E50";
-    ctx.beginPath();
-    ctx.arc(0, -18, 14, Math.PI, 0); // Верхняя часть
-    ctx.fill();
-    // Прорези для глаз (белые)
+    ctx.beginPath(); ctx.arc(0, -18, 14, Math.PI, 0); ctx.fill();
     ctx.fillStyle = "#FFF";
     ctx.beginPath(); ctx.arc(-6, -16, 4, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(6, -16, 4, 0, Math.PI * 2); ctx.fill();
 
-    // Волосы (торчат из-под маски)
     ctx.fillStyle = "#5C4033";
     ctx.beginPath(); ctx.moveTo(-12, -25); ctx.lineTo(-5, -35); ctx.lineTo(0, -25); ctx.fill();
-
     ctx.restore();
   }
 
-  // Функция рисования медали
   function drawMedal(ctx, x, y, scale) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(scale, scale);
-    
-    // Лента
-    ctx.fillStyle = "#C0392B";
-    ctx.beginPath(); ctx.moveTo(-8, -30); ctx.lineTo(8, -30); ctx.lineTo(0, -5); ctx.fill();
-    ctx.fillStyle = "#E74C3C";
-    ctx.beginPath(); ctx.moveTo(-8, -30); ctx.lineTo(0, -20); ctx.lineTo(-8, -5); ctx.fill();
-
-    // Сама медаль (объемная)
+    ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
+    ctx.fillStyle = "#C0392B"; ctx.beginPath(); ctx.moveTo(-8, -30); ctx.lineTo(8, -30); ctx.lineTo(0, -5); ctx.fill();
+    ctx.fillStyle = "#E74C3C"; ctx.beginPath(); ctx.moveTo(-8, -30); ctx.lineTo(0, -20); ctx.lineTo(-8, -5); ctx.fill();
     const gradientGold = ctx.createRadialGradient(-5, -5, 2, 0, 0, 15);
-    gradientGold.addColorStop(0, "#F9E79F");
-    gradientGold.addColorStop(0.5, "#F1C40F");
-    gradientGold.addColorStop(1, "#B7950B");
-    ctx.fillStyle = gradientGold;
-    ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
-    
-    // Звезда на медали
-    ctx.fillStyle = "#D4AC0D";
-    ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+    gradientGold.addColorStop(0, "#F9E79F"); gradientGold.addColorStop(0.5, "#F1C40F"); gradientGold.addColorStop(1, "#B7950B");
+    ctx.fillStyle = gradientGold; ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#D4AC0D"; ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
 
   function animate() {
-    // Фон: небо и земля
-    ctx.fillStyle = "#87CEEB";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Солнце с 3D-бликом
+    ctx.fillStyle = "#87CEEB"; ctx.fillRect(0, 0, canvas.width, canvas.height);
     const sunGrad = ctx.createRadialGradient(500, 60, 10, 500, 60, 40);
-    sunGrad.addColorStop(0, "#FFF9C4");
-    sunGrad.addColorStop(1, "#FBC02D");
-    ctx.fillStyle = sunGrad;
-    ctx.beginPath(); ctx.arc(500, 60, 30 + Math.sin(t*0.05)*5, 0, Math.PI*2); ctx.fill();
-
-    // Земля (объемная)
-    ctx.fillStyle = "#27AE60";
-    ctx.beginPath();
-    ctx.moveTo(0, 280);
-    ctx.quadraticCurveTo(300, 230, 600, 280);
-    ctx.lineTo(600, 350); ctx.lineTo(0, 350);
-    ctx.fill();
-
-    // Пьедестал (торжественный)
+    sunGrad.addColorStop(0, "#FFF9C4"); sunGrad.addColorStop(1, "#FBC02D");
+    ctx.fillStyle = sunGrad; ctx.beginPath(); ctx.arc(500, 60, 30 + Math.sin(t*0.05)*5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#27AE60"; ctx.beginPath(); ctx.moveTo(0, 280); ctx.quadraticCurveTo(300, 230, 600, 280); ctx.lineTo(600, 350); ctx.lineTo(0, 350); ctx.fill();
     const pedGrad = ctx.createLinearGradient(0, 250, 0, 350);
-    pedGrad.addColorStop(0, "#BDC3C7");
-    pedGrad.addColorStop(1, "#7F8C8D");
-    ctx.fillStyle = pedGrad;
-    ctx.fillRect(350, 250, 100, 100);
-    ctx.fillStyle = "#95A5A6";
-    ctx.fillRect(340, 240, 120, 10);
+    pedGrad.addColorStop(0, "#BDC3C7"); pedGrad.addColorStop(1, "#7F8C8D");
+    ctx.fillStyle = pedGrad; ctx.fillRect(350, 250, 100, 100);
+    ctx.fillStyle = "#95A5A6"; ctx.fillRect(340, 240, 120, 10);
 
-    // Тайминги
     if (t < 80) {
-      // Федя выпрыгивает на пьедестал
       const jump = Math.sin((t / 80) * Math.PI) * 50;
       drawSuperFedia(ctx, 400, 240 - jump, 1.5, t);
     } else {
-      // Федя стоит на пьедестале
       drawSuperFedia(ctx, 400, 240, 1.5, 0);
-      
-      // Фиксик торжественно подходит (с 80 по 150 кадр)
       if (t > 80) {
-        let fixikX = 150 + ((t - 80) / 70) * 180; // Идет слева
-        if (fixikX > 330) fixikX = 330; // Останавливается рядом
-        
-        // Легкое покачивание при ходьбе
+        let fixikX = 150 + ((t - 80) / 70) * 180;
+        if (fixikX > 330) fixikX = 330;
         let walkBob = 0;
         if (t < 150) walkBob = Math.abs(Math.sin(t * 0.2)) * 5;
-
-        if (fixikImg.complete && fixikImg.naturalWidth > 0) {
-          ctx.drawImage(fixikImg, fixikX, 200 - walkBob, 80, 80);
-        } else {
-          ctx.fillStyle = "#00BFFF";
-          ctx.beginPath(); ctx.arc(fixikX + 40, 240, 30, 0, Math.PI * 2); ctx.fill();
-        }
-
-        // Вручение медали (с 150 кадра)
+        if (fixikImg.complete && fixikImg.naturalWidth > 0) ctx.drawImage(fixikImg, fixikX, 200 - walkBob, 80, 80);
+        else { ctx.fillStyle = "#00BFFF"; ctx.beginPath(); ctx.arc(fixikX + 40, 240, 30, 0, Math.PI * 2); ctx.fill(); }
         if (t > 150) {
            const medalProgress = Math.min((t - 150) / 40, 1);
-           // Медаль летит от Фиксика к шее Феди
            const startX = 330 + 40, startY = 200; 
-           const endX = 400, endY = 240 - 15; // Шея Феди
-           
+           const endX = 400, endY = 240 - 15;
            const mx = startX + (endX - startX) * medalProgress;
-           const my = startY + (endY - startY) * medalProgress - Math.sin(medalProgress * Math.PI) * 30; // Дуга
-           
+           const my = startY + (endY - startY) * medalProgress - Math.sin(medalProgress * Math.PI) * 30;
            drawMedal(ctx, mx, my, medalProgress);
         }
       }
     }
 
-    // Салют и текст
     if (t > 200) {
         if (t % 15 === 0) {
             const colors = ["#FF5733", "#33FF57", "#3357FF", "#F1C40F", "#9B59B6"];
@@ -452,8 +414,6 @@ function start3DAnimation(canvas) {
                 ctx.fill();
             }
         }
-        
-        // Текст с обводкой
         ctx.font = "900 32px Arial";
         ctx.textAlign = "center";
         ctx.lineWidth = 6;
@@ -466,21 +426,16 @@ function start3DAnimation(canvas) {
     t++;
     animFrameId = requestAnimationFrame(animate);
   }
-
   animate();
 }
 
 function render() {
-  if (stage === "explain") drawExplain();
+  if (stage === "home") drawHome();
+  else if (stage === "explain") drawExplain();
   else if (stage === "game") drawGame();
   else if (stage === "consolidation") drawConsolidation();
   else if (stage === "done") drawDone();
 }
 
-fetch("lesson_06.json")
-  .then(r => r.json())
-  .then(data => { lesson = data; render(); })
-  .catch(err => {
-    app.innerHTML = "<h1>Ошибка загрузки</h1><p>Не удалось загрузить lesson_06.json.</p>";
-    console.error(err);
-  });
+// Стартуем с главного экрана
+render();
