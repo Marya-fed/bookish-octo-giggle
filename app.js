@@ -1,13 +1,19 @@
 // ---------- ПРОГРЕСС ----------
 const Progress = {
   load() {
-    try { 
-      // По умолчанию открыт только 1-й урок
-      return JSON.parse(localStorage.getItem("math_tutor_progress")) || {completed: [], diagnostic_passed: false, unlocked: [1]}; 
+    try {
+      const data = JSON.parse(localStorage.getItem("math_tutor_progress"));
+      // Если данных нет или они старого формата (без массивов), создаем новые
+      if (!data || !Array.isArray(data.completed) || !Array.isArray(data.unlocked)) {
+        return { completed: [], diagnostic_passed: false, unlocked: [1] };
+      }
+      return data;
+    } catch { 
+      return { completed: [], diagnostic_passed: false, unlocked: [1] }; 
     }
-    catch { return {completed: [], diagnostic_passed: false, unlocked: [1]}; }
   },
   save(p) { localStorage.setItem("math_tutor_progress", JSON.stringify(p)); }
+};
 };
 
 // ---------- СОСТОЯНИЕ ----------
