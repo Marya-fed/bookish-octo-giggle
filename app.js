@@ -12,6 +12,7 @@ let lesson = null;
 let stage = "explain"; 
 let gameState = null;
 let consIndex = 0, consInput = "", consFeedback = null, consOk = 0;
+let animFrameId = null;
 
 // Фразы Фиксика
 const FIXIK_PHRASES = {
@@ -21,7 +22,7 @@ const FIXIK_PHRASES = {
   success: "Супер! Ты отлично справляешься. Я в тебя верю!",
   consStart: "Теперь проверим, как ты усвоил тему. Пиши ответы смело!",
   consError: "Почти получилось! Не переживай, попробуй еще раз, я подскажу.",
-  done: "Ура! Мы прошли этот урок! Ты большой молодец. Отдыхай!"
+  done: "Ура! Мы прошли этот урок! Федя, ты большой молодец. Держи награду!"
 };
 
 const app = document.getElementById("app");
@@ -32,9 +33,11 @@ function el(tag, cls, text) {
   if (text !== undefined) e.textContent = text;
   return e;
 }
-function clear() { app.innerHTML = ""; }
+function clear() { 
+  if (animFrameId) cancelAnimationFrame(animFrameId);
+  app.innerHTML = ""; 
+}
 
-// Компонент Фиксика с картинкой
 function renderFixik(text, mood = "normal") {
   const box = el("div", "fixik-box");
   if (mood === "success") box.classList.add("success");
@@ -42,7 +45,7 @@ function renderFixik(text, mood = "normal") {
   
   const avatar = el("div", "fixik-avatar");
   const img = document.createElement("img");
-  img.src = "fixik.png"; // Наша картинка
+  img.src = "fixik.png"; 
   img.alt = "Фиксик";
   avatar.appendChild(img);
   
@@ -83,12 +86,7 @@ function drawExplain() {
 }
 
 function initGame() {
-  gameState = {
-    placed: {},     
-    selected: null,
-    wrongIndex: null,
-    feedback: null,
-  };
+  gameState = { placed: {}, selected: null, wrongIndex: null, feedback: null };
 }
 
 function drawGame() {
@@ -151,14 +149,8 @@ function drawGame() {
 
   if (gameState.feedback) {
     const fb = el("div", "feedback err");
-    fb.style.padding = "14px";
-    fb.style.background = "#fff5f5";
-    fb.style.borderRadius = "12px";
-    fb.style.border = "2px solid #ff6b6b";
-    fb.style.color = "#8a2a2a";
-    fb.style.fontSize = "15px";
-    fb.style.marginTop = "16px";
-    
+    fb.style.padding = "14px"; fb.style.background = "#fff5f5"; fb.style.borderRadius = "12px";
+    fb.style.border = "2px solid #ff6b6b"; fb.style.color = "#8a2a2a"; fb.style.fontSize = "15px"; fb.style.marginTop = "16px";
     fb.appendChild(el("strong", "", "Разбор полёта:"));
     fb.appendChild(el("p", "", gameState.feedback.hint));
     if (gameState.feedback.counterexample) {
@@ -216,9 +208,7 @@ function drawConsolidation() {
   app.appendChild(card);
 
   const inp = document.createElement("input");
-  inp.type = "text";
-  inp.placeholder = "Введи ответ или объяснение";
-  inp.value = consInput;
+  inp.type = "text"; inp.placeholder = "Введи ответ или объяснение"; inp.value = consInput;
   inp.oninput = (e) => { consInput = e.target.value; };
   inp.onkeydown = (e) => { if (e.key === "Enter") submitCons(); };
   app.appendChild(inp);
@@ -229,9 +219,7 @@ function drawConsolidation() {
 
   if (consFeedback) {
     const fb = el("div", "feedback " + (consFeedback.ok ? "ok" : "err"));
-    fb.style.padding = "16px";
-    fb.style.borderRadius = "14px";
-    fb.style.marginTop = "16px";
+    fb.style.padding = "16px"; fb.style.borderRadius = "14px"; fb.style.marginTop = "16px";
     if (consFeedback.ok) {
        fb.style.background = "#f4fcf7"; fb.style.border = "2px solid #43e97b"; fb.style.color = "#0b4632";
     } else {
@@ -263,19 +251,33 @@ function submitCons() {
   render();
 }
 
+// ==========================================
+// МУЛЬТФИЛЬМ С ФЕДЕЙ И НАГРАДОЙ
+// ==========================================
 function drawDone() {
   clear();
+  // Оставляем реплику Фиксика вверху
   app.appendChild(renderFixik(FIXIK_PHRASES.done, "success"));
   
-  app.appendChild(el("div", "praise", "🎉🏆🎉"));
   app.appendChild(el("h1", "center", "Урок закрыт!"));
   
-  const card = el("div", "card");
-  card.style.textAlign = "center";
-  card.appendChild(el("p", "", `Ты прошёл все задания урока ${lesson.id}.`));
-  card.appendChild(el("p", "", "Ты сам разобрался, где корень произведения раскладывается, а где нет — это ровно то, что нужно к концу первой четверти."));
-  app.appendChild(card);
+  // Контейнер для мультфильма
+  const canvasContainer = el("div", "card");
+  canvasContainer.style.padding = "0";
+  canvasContainer.style.overflow = "hidden";
+  canvasContainer.style.display = "flex";
+  canvasContainer.style.justifyContent = "center";
+  canvasContainer.style.background = "#87CEEB"; // Небо
+  
+  const canvas = document.createElement("canvas");
+  canvas.width = 600;
+  canvas.height = 300;
+  canvas.style.width = "100%";
+  canvas.style.maxWidth = "600px";
+  canvasContainer.appendChild(canvas);
+  app.appendChild(canvasContainer);
 
+  // Кнопка "Забрать награду"
   const btn = el("button", "btn green", "Забрать награду 🏅");
   btn.onclick = () => {
     clear();
@@ -283,6 +285,184 @@ function drawDone() {
     app.appendChild(el("h1", "center", "Уровень пройден!"));
   };
   app.appendChild(btn);
+
+  // Запускаем анимацию
+  startAnimation(canvas);
+}
+
+function startAnimation(canvas) {
+  const ctx = canvas.getContext("2d");
+  let t = 0; // Время анимации
+
+  // Загружаем картинку Фиксика для отрисовки на холсте
+  const fixikImg = new Image();
+  fixikImg.src = "fixik.png";
+
+  function drawBoy(ctx, x, y, scale, isClimbing) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    
+    // Тело (куртка)
+    ctx.fillStyle = "#4A90E2"; // Синяя куртка
+    ctx.beginPath();
+    ctx.roundRect(-15, 0, 30, 40, 10);
+    ctx.fill();
+    
+    // Голова
+    ctx.fillStyle = "#FFDFC4"; // Кожа
+    ctx.beginPath();
+    ctx.arc(0, -15, 14, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Волосы
+    ctx.fillStyle = "#5C4033";
+    ctx.beginPath();
+    ctx.arc(0, -20, 14, Math.PI, 0);
+    ctx.fill();
+    
+    // Рюкзак (если лезет)
+    if (isClimbing) {
+      ctx.fillStyle = "#E74C3C";
+      ctx.beginPath();
+      ctx.roundRect(-25, 5, 10, 20, 5);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawMedal(ctx, x, y) {
+    // Ленточка
+    ctx.fillStyle = "#E74C3C";
+    ctx.beginPath();
+    ctx.moveTo(x - 10, y - 20);
+    ctx.lineTo(x + 10, y - 20);
+    ctx.lineTo(x, y);
+    ctx.fill();
+    
+    // Круг медали
+    ctx.fillStyle = "#F1C40F";
+    ctx.beginPath();
+    ctx.arc(x, y + 10, 15, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Блик
+    ctx.fillStyle = "#F9E79F";
+    ctx.beginPath();
+    ctx.arc(x - 5, y + 5, 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function animate() {
+    // Очищаем фон (небо)
+    ctx.fillStyle = "#87CEEB";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Рисуем солнце (с анимацией пульсации)
+    ctx.fillStyle = "rgba(255, 255, 0, 0.8)";
+    ctx.beginPath();
+    const sunScale = 1 + Math.sin(t * 0.05) * 0.1;
+    ctx.arc(500, 60, 30 * sunScale, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Рисуем горку (треугольник)
+    ctx.fillStyle = "#2ECC71"; // Зеленая трава
+    ctx.beginPath();
+    ctx.moveTo(0, 300);
+    ctx.lineTo(400, 100);
+    ctx.lineTo(600, 300);
+    ctx.fill();
+
+    // Снежная вершина
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath();
+    ctx.moveTo(350, 150);
+    ctx.lineTo(400, 100);
+    ctx.lineTo(450, 150);
+    ctx.lineTo(420, 140);
+    ctx.lineTo(400, 160);
+    ctx.lineTo(380, 140);
+    ctx.fill();
+
+    // --- АНИМАЦИЯ ПЕРСОНАЖЕЙ ---
+    
+    // Тайминги:
+    // 0 - 100: Федя поднимается (едет по склону)
+    // 100 - 200: Фиксик появляется с медалью
+    // 200 - 300: Вручение и фейерверк
+
+    if (t < 100) {
+      // Федя едет вверх
+      const progress = t / 100; // от 0 до 1
+      // Координаты от подножия (150, 300) до вершины (380, 130)
+      const bx = 150 + (380 - 150) * progress;
+      const by = 300 - (300 - 130) * progress;
+      
+      drawBoy(ctx, bx, by, 1, true);
+      
+      // Пыль из-под ног
+      if (t % 10 === 0) {
+          ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+          ctx.beginPath();
+          ctx.arc(bx - 10, by + 40, Math.random() * 5 + 2, 0, Math.PI * 2);
+          ctx.fill();
+      }
+    } else {
+      // Федя стоит на вершине
+      drawBoy(ctx, 380, 130, 1, false);
+      
+      // Фиксик вылетает слева сверху
+      if (t > 100) {
+        const fixikProgress = Math.min((t - 100) / 50, 1); // от 0 до 1
+        const fx = 50 + (300 - 50) * fixikProgress;
+        const fy = 50 + Math.sin(t * 0.1) * 10; // Парение
+        
+        // Рисуем Фиксика (картинку) или запасной круг, если картинка не загрузилась
+        if (fixikImg.complete && fixikImg.naturalWidth > 0) {
+            ctx.drawImage(fixikImg, fx - 40, fy - 40, 80, 80);
+        } else {
+            ctx.fillStyle = "#00BFFF";
+            ctx.beginPath();
+            ctx.arc(fx, fy, 25, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Появление медали
+        if (t > 150) {
+           const medalY = fy + 40 + ((t - 150) / 50) * 20;
+           drawMedal(ctx, fx + 20, Math.min(medalY, fy + 60));
+        }
+      }
+
+      // Фейерверк в конце
+      if (t > 200) {
+          if (t % 20 === 0) {
+              const colors = ["#FF5733", "#33FF57", "#3357FF", "#F1C40F", "#9B59B6"];
+              ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+              for (let i = 0; i < 10; i++) {
+                  const angle = Math.random() * Math.PI * 2;
+                  const dist = Math.random() * 50 + 10;
+                  ctx.beginPath();
+                  ctx.arc(400 + Math.cos(angle) * dist, 50 + Math.sin(angle) * dist, 3, 0, Math.PI * 2);
+                  ctx.fill();
+              }
+          }
+      }
+    }
+
+    // Текст поздравления
+    if (t > 200) {
+        ctx.fillStyle = "#232832";
+        ctx.font = "bold 24px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("I УРОВЕНЬ ПРОЙДЕН!", canvas.width / 2, 40);
+    }
+
+    t++;
+    animFrameId = requestAnimationFrame(animate);
+  }
+
+  animate();
 }
 
 function render() {
