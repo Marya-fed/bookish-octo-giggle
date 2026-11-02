@@ -9,13 +9,23 @@ const Progress = {
 
 // ---------- состояние ----------
 let lesson = null;
-let stage = "explain"; // explain | game | consolidation | done
+let stage = "explain"; 
 let gameState = null;
 let consIndex = 0, consInput = "", consFeedback = null, consOk = 0;
 
+// Фразы Фиксика
+const FIXIK_PHRASES = {
+  start: "Привет! Я Фиксик. Помогу тебе разобраться с корнями. Поехали!",
+  gameStart: "Вспомни правило: корень произведения равен произведению корней. Но есть ловушки!",
+  error: "Ой! Кажется, здесь спряталась ловушка. Давай посмотрим внимательнее.",
+  success: "Супер! Ты отлично справляешься. Я в тебя верю!",
+  consStart: "Теперь проверим, как ты усвоил тему. Пиши ответы смело!",
+  consError: "Почти получилось! Не переживай, попробуй еще раз, я подскажу.",
+  done: "Ура! Мы прошли этот урок! Ты большой молодец. Отдыхай!"
+};
+
 const app = document.getElementById("app");
 
-// ---------- утилиты ----------
 function el(tag, cls, text) {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -23,13 +33,21 @@ function el(tag, cls, text) {
   return e;
 }
 function clear() { app.innerHTML = ""; }
-function normalize(s) {
-  return s.toLowerCase().trim()
-    .replace(/\s+/g, "")
-    .replace(/·/g, "*")
-    .replace(/√/g, "sqrt")
-    .replace(/√/g, "");
+
+// Компонент Фиксика
+function renderFixik(text, mood = "normal") {
+  const box = el("div", "fixik-box");
+  if (mood === "success") box.classList.add("success");
+  if (mood === "error") box.classList.add("error");
+  
+  const avatar = el("div", "fixik-avatar", "🧑‍🔧"); // Фиксик с гаечным ключом
+  const speech = el("div", "fixik-speech", text);
+  
+  box.appendChild(avatar);
+  box.appendChild(speech);
+  return box;
 }
+
 function evaluate(task, input) {
   const answer = (task.answer || "").trim().toLowerCase();
   if (answer === "open") {
@@ -45,6 +63,8 @@ function evaluate(task, input) {
 // ---------- экраны ----------
 function drawExplain() {
   clear();
+  app.appendChild(renderFixik(FIXIK_PHRASES.start));
+  
   app.appendChild(el("h1", "", `Урок ${lesson.id}. ${lesson.title}`));
   const card = el("div", "card");
   card.appendChild(el("p", "", lesson.explain.text));
@@ -59,7 +79,7 @@ function drawExplain() {
 
 function initGame() {
   gameState = {
-    placed: {},     // index -> bin
+    placed: {},     
     selected: null,
     wrongIndex: null,
     feedback: null,
@@ -68,19 +88,38 @@ function initGame() {
 
 function drawGame() {
   clear();
+  
+  let fixikText = FIXIK_PHRASES.gameStart;
+  let mood = "normal";
+  if (gameState.feedback) {
+    fixikText = FIXIK_PHRASES.error;
+    mood = "error";
+  } else if (Object.keys(gameState.placed).length > 0 && !gameState.selected) {
+    fixikText = FIXIK_PHRASES.success;
+    mood = "success";
+  }
+  
+  app.appendChild(renderFixik(fixikText, mood));
+
   app.appendChild(el("h1", "", `Урок ${lesson.id}. ${lesson.title}`));
   app.appendChild(el("div", "instruction", lesson.game.instruction));
 
-  // контейнеры
   const bins = el("div", "bins");
   lesson.game.bins.forEach((name, bi) => {
     const bin = el("div", "bin");
     if (gameState.selected !== null) bin.classList.add("active");
     bin.appendChild(el("div", "bin-title", name));
+    
     const placedHere = Object.entries(gameState.placed)
       .filter(([i, b]) => b === bi)
       .map(([i]) => lesson.game.items[i].expr);
-    bin.appendChild(el("div", "bin-items", placedHere.join(", ")));
+      
+    const itemsDiv = el("div", "bin-items");
+    placedHere.forEach(expr => {
+       itemsDiv.appendChild(el("span", "", expr + " "));
+    });
+    bin.appendChild(itemsDiv);
+    
     bin.onclick = () => {
       if (gameState.selected === null) return;
       attemptPlace(gameState.selected, bi);
@@ -89,7 +128,6 @@ function drawGame() {
   });
   app.appendChild(bins);
 
-  // карточки
   const cards = el("div", "cards");
   lesson.game.items.forEach((item, i) => {
     if (i in gameState.placed) return;
@@ -106,10 +144,17 @@ function drawGame() {
   });
   app.appendChild(cards);
 
-  // фидбек
   if (gameState.feedback) {
     const fb = el("div", "feedback err");
-    fb.appendChild(el("strong", "", "Не совсем. Разберём вместе:"));
+    fb.style.padding = "14px";
+    fb.style.background = "#fff5f5";
+    fb.style.borderRadius = "12px";
+    fb.style.border = "2px solid #ff6b6b";
+    fb.style.color = "#8a2a2a";
+    fb.style.fontSize = "15px";
+    fb.style.marginTop = "16px";
+    
+    fb.appendChild(el("strong", "", "Разбор полёта:"));
     fb.appendChild(el("p", "", gameState.feedback.hint));
     if (gameState.feedback.counterexample) {
       fb.appendChild(el("p", "", "Контрпример: " + gameState.feedback.counterexample));
@@ -117,7 +162,6 @@ function drawGame() {
     app.appendChild(fb);
   }
 
-  // прогресс
   const total = lesson.game.items.length;
   const done = Object.keys(gameState.placed).length;
   const pr = el("div", "progress", `Размещено: ${done} / ${total}`);
@@ -150,8 +194,18 @@ function attemptPlace(idx, binIndex) {
 
 function drawConsolidation() {
   clear();
+  
+  let fixikText = FIXIK_PHRASES.consStart;
+  let mood = "normal";
+  if (consFeedback) {
+    if (consFeedback.ok) { fixikText = FIXIK_PHRASES.success; mood = "success"; }
+    else { fixikText = FIXIK_PHRASES.consError; mood = "error"; }
+  }
+  app.appendChild(renderFixik(fixikText, mood));
+
   const total = lesson.consolidation.length;
   app.appendChild(el("h1", "", `Закрепление — задание ${consIndex + 1} из ${total}`));
+  
   const card = el("div", "card");
   card.appendChild(el("p", "", lesson.consolidation[consIndex].task));
   app.appendChild(card);
@@ -170,6 +224,14 @@ function drawConsolidation() {
 
   if (consFeedback) {
     const fb = el("div", "feedback " + (consFeedback.ok ? "ok" : "err"));
+    fb.style.padding = "16px";
+    fb.style.borderRadius = "14px";
+    fb.style.marginTop = "16px";
+    if (consFeedback.ok) {
+       fb.style.background = "#f4fcf7"; fb.style.border = "2px solid #43e97b"; fb.style.color = "#0b4632";
+    } else {
+       fb.style.background = "#fff5f5"; fb.style.border = "2px solid #ff6b6b"; fb.style.color = "#8a2a2a";
+    }
     fb.appendChild(el("strong", "", consFeedback.ok ? "✓ Верно!" : "✗ Пока не так"));
     fb.appendChild(el("p", "", consFeedback.msg));
     app.appendChild(fb);
@@ -189,6 +251,8 @@ function submitCons() {
       const p = Progress.load();
       if (!p.completed.includes(lesson.id)) p.completed.push(lesson.id);
       Progress.save(p);
+    } else {
+      setTimeout(() => { consFeedback = null; render(); }, 1500);
     }
   }
   render();
@@ -196,20 +260,26 @@ function submitCons() {
 
 function drawDone() {
   clear();
-  app.appendChild(el("div", "praise", "🎉"));
+  app.appendChild(renderFixik(FIXIK_PHRASES.done, "success"));
+  
+  app.appendChild(el("div", "praise", "🎉🏆🎉"));
   app.appendChild(el("h1", "center", "Урок закрыт!"));
-  app.appendChild(el("p", "center", `Ты прошёл все задания урока ${lesson.id}.`));
-  app.appendChild(el("p", "center", "Ты сам разобрался, где корень произведения раскладывается, а где нет — это ровно то, что нужно к концу первой четверти."));
-  const btn = el("button", "btn green", "Готово");
+  
+  const card = el("div", "card");
+  card.style.textAlign = "center";
+  card.appendChild(el("p", "", `Ты прошёл все задания урока ${lesson.id}.`));
+  card.appendChild(el("p", "", "Ты сам разобрался, где корень произведения раскладывается, а где нет — это ровно то, что нужно к концу первой четверти."));
+  app.appendChild(card);
+
+  const btn = el("button", "btn green", "Забрать награду 🏅");
   btn.onclick = () => {
-    app.innerHTML = "";
-    app.appendChild(el("h1", "center", "Прогресс сохранён"));
-    app.appendChild(el("p", "center", "До встречи на следующем уроке!"));
+    clear();
+    app.appendChild(renderFixik("Ты справился! Прогресс сохранен. До встречи на следующем уроке!", "success"));
+    app.appendChild(el("h1", "center", "Уровень пройден!"));
   };
   app.appendChild(btn);
 }
 
-// ---------- рендер ----------
 function render() {
   if (stage === "explain") drawExplain();
   else if (stage === "game") drawGame();
@@ -217,12 +287,10 @@ function render() {
   else if (stage === "done") drawDone();
 }
 
-// ---------- старт ----------
 fetch("lesson_06.json")
   .then(r => r.json())
   .then(data => { lesson = data; render(); })
   .catch(err => {
-    app.innerHTML = "<h1>Ошибка загрузки</h1><p>Не удалось загрузить lesson_06.json. " +
-                    "Убедись, что файл лежит рядом с index.html и открываешь через http-сервер, а не file://</p>";
+    app.innerHTML = "<h1>Ошибка загрузки</h1><p>Не удалось загрузить lesson_06.json. Убедись, что файл лежит рядом с index.html и открываешь через http-сервер, а не file://</p>";
     console.error(err);
   });
