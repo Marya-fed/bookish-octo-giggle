@@ -1,4 +1,4 @@
-// ---------- прогресс ----------
+// ---------- ПРОГРЕСС ----------
 const Progress = {
   load() {
     try { 
@@ -10,58 +10,14 @@ const Progress = {
   save(p) { localStorage.setItem("math_tutor_progress", JSON.stringify(p)); }
 };
 
-// ---------- состояние ----------
+// ---------- СОСТОЯНИЕ ----------
 let lesson = null;
-let stage = "welcome"; 
+let stage = "welcome"; // стартуем с приветствия
 let gameState = null;
 let consIndex = 0, consInput = "", consFeedback = null, consOk = 0;
 let animFrameId = null;
 
-// 10 ВОПРОСОВ ДЛЯ ДИАГНОСТИКИ
-const DIAGNOSTIC_QUESTIONS = [
-  {
-    question: "Чему равно значение выражения √(4 · 9)?",
-    options: ["13", "6", "36"], correct: 1, topic: "Свойства корня", lessonId: 6
-  },
-  {
-    question: "Вычисли: 2³ · 2²",
-    options: ["2⁵", "2⁶", "4⁵"], correct: 0, topic: "Степени", lessonId: 1
-  },
-  {
-    question: "Реши уравнение: x² - 5x + 6 = 0",
-    options: ["x=1, x=6", "x=2, x=3", "x=-2, x=-3"], correct: 1, topic: "Кв. уравнения", lessonId: 2
-  },
-  {
-    question: "Найди область определения функции y = √(x - 3)",
-    options: ["x > 3", "x ≥ 3", "x < 3"], correct: 1, topic: "Область опр.", lessonId: 4
-  },
-  {
-    question: "Реши неравенство: (x - 1)(x + 2) > 0",
-    options: ["(-2; 1)", "(-∞; -2) ∪ (1; +∞)", "(-∞; 1)"], correct: 1, topic: "Неравенства", lessonId: 3
-  },
-  {
-    question: "Сколько прямых можно провести через две точки в пространстве?",
-    options: ["Одну", "Две", "Бесконечно много"], correct: 0, topic: "Аксиомы", lessonId: 8
-  },
-  {
-    question: "Если прямая параллельна плоскости, сколько общих точек у них?",
-    options: ["Одну", "Ни одной", "Бесконечно много"], correct: 1, topic: "Параллельность", lessonId: 9
-  },
-  {
-    question: "Чему равно √(a²) при a < 0?",
-    options: ["a", "-a", "a²"], correct: 1, topic: "Корень n-й ст.", lessonId: 5
-  },
-  {
-    question: "Упрости: (√a)²",
-    options: ["a", "a²", "√a"], correct: 0, topic: "Иррациональные", lessonId: 7
-  },
-  {
-    question: "Если две плоскости параллельны, пересекаются ли они?",
-    options: ["Да", "Нет", "Только под углом"], correct: 1, topic: "Плоскости", lessonId: 10
-  }
-];
-let diagIndex = 0;
-
+// ---------- ДАННЫЕ ДЛЯ КАРТЫ ----------
 const LESSONS_LIST = [
   { id: 1, title: "Степени", desc: "Свойства степеней" },
   { id: 2, title: "Кв. уравнения", desc: "Виета и дискриминант" },
@@ -77,13 +33,28 @@ const LESSONS_LIST = [
   { id: 12, title: "Финал", desc: "Итоговое закрепление" }
 ];
 
+// ---------- 10 ВОПРОСОВ ДИАГНОСТИКИ ----------
+const DIAGNOSTIC_QUESTIONS = [
+  { question: "Чему равно значение выражения √(4 · 9)?", options: ["13", "6", "36"], correct: 1, topic: "Свойства корня", lessonId: 6 },
+  { question: "Вычисли: 2³ · 2²", options: ["2⁵", "2⁶", "4⁵"], correct: 0, topic: "Степени", lessonId: 1 },
+  { question: "Реши уравнение: x² - 5x + 6 = 0", options: ["x=1, x=6", "x=2, x=3", "x=-2, x=-3"], correct: 1, topic: "Кв. уравнения", lessonId: 2 },
+  { question: "Найди область определения функции y = √(x - 3)", options: ["x > 3", "x ≥ 3", "x < 3"], correct: 1, topic: "Область опр.", lessonId: 4 },
+  { question: "Реши неравенство: (x - 1)(x + 2) > 0", options: ["(-2; 1)", "(-∞; -2) ∪ (1; +∞)", "(-∞; 1)"], correct: 1, topic: "Неравенства", lessonId: 3 },
+  { question: "Сколько прямых можно провести через две точки в пространстве?", options: ["Одну", "Две", "Бесконечно много"], correct: 0, topic: "Аксиомы", lessonId: 8 },
+  { question: "Если прямая параллельна плоскости, сколько общих точек у них?", options: ["Одну", "Ни одной", "Бесконечно много"], correct: 1, topic: "Параллельность", lessonId: 9 },
+  { question: "Чему равно √(a²) при a < 0?", options: ["a", "-a", "a²"], correct: 1, topic: "Корень n-й ст.", lessonId: 5 },
+  { question: "Упрости: (√a)²", options: ["a", "a²", "√a"], correct: 0, topic: "Иррациональные", lessonId: 7 },
+  { question: "Если две плоскости параллельны, пересекаются ли они?", options: ["Да", "Нет", "Только под углом"], correct: 1, topic: "Плоскости", lessonId: 10 }
+];
+let diagIndex = 0;
+
+// ---------- ФРАЗЫ ФИКСИКА ----------
 const FIXIK_PHRASES = {
   welcome: "Привет, Федя! Я Фиксик. Чтобы я понял, какие темы тебе нужно подтянуть, давай пройдем диагностику из 10 вопросов. Готов?",
   diagCorrect: "Верно! Отличная работа.",
   diagWrong: "Почти! Но здесь есть пробел, мы это исправим.",
   diagDone: "Диагностика пройдена! Я составил для тебя индивидуальный план. Смотри на карту!",
   start: "Выбирай доступный урок на карте и погнали!",
-  locked: "Этот урок пока закрыт! Сначала пройди предыдущие.",
   gameStart: "Вспомни правило: корень произведения равен произведению корней. Но есть ловушки!",
   error: "Ой! Кажется, здесь спряталась ловушка. Давай посмотрим внимательнее.",
   success: "Супер! Ты отлично справляешься. Я в тебя верю!",
@@ -94,7 +65,7 @@ const FIXIK_PHRASES = {
 
 const app = document.getElementById("app");
 
-// --- СИСТЕМА ЗАЩИТЫ ---
+// ---------- СИСТЕМА ЗАЩИТЫ ----------
 function showWarning() {
   if (document.getElementById("copy-warning")) return;
   const overlay = document.createElement("div");
@@ -110,7 +81,7 @@ function showWarning() {
 document.addEventListener('copy', (e) => { e.preventDefault(); showWarning(); });
 document.addEventListener('paste', (e) => { e.preventDefault(); showWarning(); });
 
-// ---------- утилиты ----------
+// ---------- УТИЛИТЫ ----------
 function el(tag, cls, text) {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -121,7 +92,6 @@ function clear() {
   if (animFrameId) cancelAnimationFrame(animFrameId);
   app.innerHTML = ""; 
 }
-
 function renderFixik(text, mood = "normal") {
   const box = el("div", "fixik-box");
   if (mood === "success") box.classList.add("success");
@@ -134,7 +104,6 @@ function renderFixik(text, mood = "normal") {
   box.appendChild(avatar); box.appendChild(speech);
   return box;
 }
-
 function evaluate(task, input) {
   const answer = (task.answer || "").trim().toLowerCase();
   if (answer === "open") {
@@ -155,7 +124,6 @@ function drawWelcome() {
   const card = el("div", "card");
   card.appendChild(el("p", "", "Сейчас мы выполним 10 заданий. По их результатам я открою те уроки на карте, которые помогут закрыть твои пробелы."));
   app.appendChild(card);
-
   const btn = el("button", "btn", "Начать диагностику 🚀");
   btn.onclick = () => { stage = "diagnostic"; diagIndex = 0; render(); };
   app.appendChild(btn);
@@ -165,7 +133,6 @@ function drawDiagnostic() {
   clear();
   app.appendChild(renderFixik(`Вопрос ${diagIndex + 1} из ${DIAGNOSTIC_QUESTIONS.length}`, "normal"));
   const q = DIAGNOSTIC_QUESTIONS[diagIndex];
-  
   app.appendChild(el("h1", "", "Проверка знаний"));
   const card = el("div", "card");
   card.appendChild(el("p", "", q.question));
@@ -181,10 +148,8 @@ function drawDiagnostic() {
       const isCorrect = (idx === q.correct);
       const p = Progress.load();
       
-      // Если ошибся, открываем этот урок (добавляем в unlocked, если его там нет)
       if (!isCorrect && !p.unlocked.includes(q.lessonId)) {
         p.unlocked.push(q.lessonId);
-        // Сортируем массив, чтобы уроки шли по порядку
         p.unlocked.sort((a,b) => a - b);
       }
       Progress.save(p);
@@ -215,7 +180,6 @@ function drawDiagDone() {
   clear();
   app.appendChild(renderFixik(FIXIK_PHRASES.diagDone, "success"));
   app.appendChild(el("h1", "center", "Диагностика завершена!"));
-  
   const btn = el("button", "btn green", "Перейти к карте знаний 🗺️");
   btn.onclick = () => { stage = "home"; render(); };
   app.appendChild(btn);
@@ -232,10 +196,6 @@ function drawHome() {
   
   LESSONS_LIST.forEach((item) => {
     const isCompleted = progress.completed.includes(item.id);
-    
-    // ЛОГИКА ПОСЛЕДОВАТЕЛЬНОСТИ: 
-    // Урок доступен, если он в unlocked И (это 1-й урок ИЛИ предыдущий урок уже пройден)
-    // Но пока у нас физически нет JSON для других уроков, мы разрешаем кликнуть, но выдаем ошибку загрузки.
     const isUnlockedByDiag = progress.unlocked.includes(item.id);
     const isPreviousCompleted = item.id === 1 || progress.completed.includes(item.id - 1);
     const isAvailable = isUnlockedByDiag && isPreviousCompleted;
@@ -413,9 +373,7 @@ function submitCons() {
   render();
 }
 
-// ==========================================
-// 3D-МУЛЬТФИЛЬМ
-// ==========================================
+// ---------- МУЛЬТФИЛЬМ ----------
 function drawDone() {
   clear();
   app.appendChild(renderFixik(FIXIK_PHRASES.done, "success"));
@@ -432,21 +390,15 @@ function drawDone() {
 
   const btn = el("button", "btn green", "Забрать награду 🏅");
   btn.onclick = () => {
-    // СОХРАНЯЕМ ПРОГРЕСС И ОТКРЫВАЕМ СЛЕДУЮЩИЙ УРОК
     const p = Progress.load();
-    if (!p.completed.includes(lesson.id)) {
-      p.completed.push(lesson.id);
-    }
-    // Открываем следующий урок
+    if (!p.completed.includes(lesson.id)) p.completed.push(lesson.id);
     const nextLesson = lesson.id + 1;
     if (nextLesson <= 12 && !p.unlocked.includes(nextLesson)) {
       p.unlocked.push(nextLesson);
       p.unlocked.sort((a,b) => a - b);
     }
     Progress.save(p);
-    
-    stage = "home"; // Возвращаем на карту
-    render();
+    stage = "home"; render();
   };
   app.appendChild(btn);
 
@@ -561,6 +513,7 @@ function start3DAnimation(canvas) {
   animate();
 }
 
+// ---------- ЗАПУСК ----------
 function render() {
   if (stage === "welcome") drawWelcome();
   else if (stage === "diagnostic") drawDiagnostic();
@@ -572,7 +525,6 @@ function render() {
   else if (stage === "done") drawDone();
 }
 
-// СТАРТ ПРИЛОЖЕНИЯ
 const savedProgress = Progress.load();
 if (savedProgress.diagnostic_passed) {
   stage = "home"; 
