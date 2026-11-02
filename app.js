@@ -21,23 +21,22 @@ let gameState = null;
 let consIndex = 0, consInput = "", consFeedback = null, consOk = 0;
 let animFrameId = null;
 
-// ---------- СПИСОК УРОКОВ ----------
+// ---------- СПИСОК УРОКОВ И НАГРАД ----------
 const LESSONS_LIST = [
-  { id: 1, title: "Степени", desc: "Свойства степеней" },
-  { id: 2, title: "Кв. уравнения", desc: "Виета и дискриминант" },
-  { id: 3, title: "Неравенства", desc: "Метод интервалов" },
-  { id: 4, title: "Область опр.", desc: "Ограничения корня" },
-  { id: 5, title: "Корень n-й ст.", desc: "Понятие корня" },
-  { id: 6, title: "Свойства корня", desc: "Урок 1-й четверти" },
-  { id: 7, title: "Иррациональные", desc: "Преобразования" },
-  { id: 8, title: "Аксиомы", desc: "Стереометрия" },
-  { id: 9, title: "Параллельность", desc: "Прямая и плоскость" },
-  { id: 10, title: "Плоскости", desc: "Параллельные плоскости" },
-  { id: 11, title: "Практикум", desc: "Алгебра + Геометрия" },
-  { id: 12, title: "Финал", desc: "Итоговое закрепление" }
+  { id: 1, title: "Степени", desc: "Свойства степеней", reward: "🌸", rewardName: "Цветок" },
+  { id: 2, title: "Кв. уравнения", desc: "Виета и дискриминант", reward: "🔑", rewardName: "Ключик" },
+  { id: 3, title: "Неравенства", desc: "Метод интервалов", reward: "🔨", rewardName: "Молоток" },
+  { id: 4, title: "Область опр.", desc: "Ограничения корня", reward: "🖊️", rewardName: "Золотая ручка" },
+  { id: 5, title: "Корень n-й ст.", desc: "Понятие корня", reward: "💎", rewardName: "Кристалл" },
+  { id: 6, title: "Свойства корня", desc: "Урок 1-й четверти", reward: "🛡️", rewardName: "Щит знаний" },
+  { id: 7, title: "Иррациональные", desc: "Преобразования", reward: "🧭", rewardName: "Компас" },
+  { id: 8, title: "Аксиомы", desc: "Стереометрия", reward: "🔭", rewardName: "Телескоп" },
+  { id: 9, title: "Параллельность", desc: "Прямая и плоскость", reward: "🗝️", rewardName: "Древний ключ" },
+  { id: 10, title: "Плоскости", desc: "Параллельные плоскости", reward: "⚖️", rewardName: "Весы" },
+  { id: 11, title: "Практикум", desc: "Алгебра + Геометрия", reward: "🏹", rewardName: "Лук" },
+  { id: 12, title: "Финал", desc: "Итоговое закрепление", reward: "🏆", rewardName: "Кубок" }
 ];
 
-// ---------- ДИАГНОСТИКА ----------
 const DIAGNOSTIC_QUESTIONS = [
   { question: "Чему равно значение выражения √(4 · 9)?", options: ["13", "6", "36"], correct: 1, topic: "Свойства корня", lessonId: 6 },
   { question: "Вычисли: 2³ · 2²", options: ["2⁵", "2⁶", "4⁵"], correct: 0, topic: "Степени", lessonId: 1 },
@@ -52,7 +51,6 @@ const DIAGNOSTIC_QUESTIONS = [
 ];
 let diagIndex = 0;
 
-// ---------- ФРАЗЫ ----------
 const FIXIK_PHRASES = {
   welcome: "Привет, Федя! Я Фиксик. Чтобы я понял, какие темы тебе нужно подтянуть, давай пройдем диагностику из 10 вопросов. Готов?",
   diagCorrect: "Верно! Отличная работа.",
@@ -69,7 +67,7 @@ const FIXIK_PHRASES = {
 
 const app = document.getElementById("app");
 
-// ---------- ЗАЩИТА ОТ СПИСЫВАНИЯ ----------
+// ---------- ЗАЩИТА ----------
 function showWarning() {
   if (document.getElementById("copy-warning")) return;
   const overlay = document.createElement("div");
@@ -189,11 +187,11 @@ function drawDiagDone() {
   app.appendChild(btn);
 }
 
-// ---------- КАРТА ----------
+// ---------- КАРТА (С ЯЧЕЙКАМИ НАГРАД) ----------
 function drawHome() {
   clear();
   app.appendChild(renderFixik(FIXIK_PHRASES.start));
-  app.appendChild(el("h1", "center", "Карта знаний"));
+  app.appendChild(el("h1", "center", "Карта восхождения"));
   
   const progress = Progress.load();
   const grid = el("div", "map-grid");
@@ -226,6 +224,27 @@ function drawHome() {
     grid.appendChild(node);
   });
   app.appendChild(grid);
+
+  // --- БЛОК ИНВЕНТАРЯ (НАГРАДЫ) ---
+  const invTitle = el("h2", "", "Твой инвентарь");
+  invTitle.style.marginTop = "30px";
+  invTitle.style.textAlign = "center";
+  invTitle.style.color = "#1a2b4c";
+  app.appendChild(invTitle);
+
+  const inventoryGrid = el("div", "inventory-grid");
+  
+  LESSONS_LIST.forEach(item => {
+    const isCollected = progress.completed.includes(item.id);
+    const slot = el("div", "inv-slot");
+    if (isCollected) slot.classList.add("filled");
+    
+    slot.appendChild(el("div", "inv-icon", isCollected ? item.reward : "❓"));
+    slot.appendChild(el("div", "inv-name", item.rewardName));
+    inventoryGrid.appendChild(slot);
+  });
+  
+  app.appendChild(inventoryGrid);
 }
 
 // ---------- УРОК ----------
@@ -377,11 +396,13 @@ function submitCons() {
   render();
 }
 
-// ---------- МУЛЬТФИЛЬМ ----------
+// ---------- 2D-МУЛЬТФИЛЬМ С РАЗНЫМИ БИОМАМИ ----------
 function drawDone() {
   clear();
-  app.appendChild(renderFixik(FIXIK_PHRASES.done, "success"));
-  app.appendChild(el("h1", "center", "Урок закрыт!"));
+  const currentReward = LESSONS_LIST.find(l => l.id === lesson.id).reward;
+  
+  app.appendChild(renderFixik(`Ура! Ты прошел Урок ${lesson.id}. Смотри, как высоко мы забрались! Твоя награда: ${currentReward}`, "success"));
+  app.appendChild(el("h1", "center", `Уровень ${lesson.id} пройден!`));
   
   const canvasContainer = el("div", "card");
   canvasContainer.style.cssText = "padding:0;overflow:hidden;display:flex;justify-content:center;background:#87CEEB;border-radius:18px;border:4px solid #fff;box-shadow:0 10px 30px rgba(0,0,0,0.1);";
@@ -392,7 +413,7 @@ function drawDone() {
   canvasContainer.appendChild(canvas);
   app.appendChild(canvasContainer);
 
-  const btn = el("button", "btn green", "Забрать награду 🏅");
+  const btn = el("button", "btn green", `Забрать награду ${currentReward}`);
   btn.onclick = () => {
     const p = Progress.load();
     if (!p.completed.includes(lesson.id)) p.completed.push(lesson.id);
@@ -406,109 +427,85 @@ function drawDone() {
   };
   app.appendChild(btn);
 
-  start3DAnimation(canvas);
+  start3DAnimation(canvas, lesson.id);
 }
 
-function start3DAnimation(canvas) {
+function start3DAnimation(canvas, lessonId) {
   const ctx = canvas.getContext("2d");
   let t = 0; 
   const fixikImg = new Image();
   fixikImg.src = "fixik.png";
 
-  function drawSuperFedia(ctx, x, y, scale, step) {
+  // Смена биомов в зависимости от урока
+  let bgColor = "#87CEEB";
+  let groundColor = "#27AE60";
+  let mountainColor = "#7F8C8D";
+  
+  if (lessonId <= 2) { groundColor = "#95A5A6"; mountainColor = "#BDC3C7"; } // Камни
+  else if (lessonId <= 4) { groundColor = "#F1C40F"; mountainColor = "#F39C12"; } // Песок
+  else if (lessonId <= 6) { groundColor = "#2ECC71"; mountainColor = "#27AE60"; } // Трава
+  else if (lessonId <= 8) { groundColor = "#1ABC9C"; mountainColor = "#16A085"; } // Плато
+  else if (lessonId <= 10) { groundColor = "#3498DB"; mountainColor = "#2980B9"; } // Оазис (вода)
+  else { groundColor = "#ECF0F1"; mountainColor = "#BDC3C7"; } // Снег
+
+  function drawSuperFedia(ctx, x, y, scale) {
     ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
+    // Плащ
     const capeWave = Math.sin(t * 0.1) * 10;
-    const gradientCape = ctx.createLinearGradient(-20, 0, -60, 40);
-    gradientCape.addColorStop(0, "#E74C3C"); gradientCape.addColorStop(1, "#922B21");
-    ctx.fillStyle = gradientCape;
+    ctx.fillStyle = "#E74C3C";
     ctx.beginPath(); ctx.moveTo(-10, 0); ctx.quadraticCurveTo(-40, 20 + capeWave, -60, 40 + capeWave); ctx.lineTo(-30, 50); ctx.lineTo(10, 10); ctx.fill();
-
-    const gradientSuit = ctx.createLinearGradient(0, 0, 0, 50);
-    gradientSuit.addColorStop(0, "#3498DB"); gradientSuit.addColorStop(1, "#2874A6");
-    ctx.fillStyle = gradientSuit;
-    ctx.beginPath(); ctx.roundRect(-15, 0, 30, 45, 8); ctx.fill();
-
-    ctx.fillStyle = "#F1C40F";
-    ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(5, 20); ctx.lineTo(-2, 20); ctx.lineTo(2, 30); ctx.lineTo(-5, 18); ctx.lineTo(1, 18); ctx.fill();
-
-    ctx.fillStyle = "#2874A6";
-    ctx.beginPath(); ctx.roundRect(-20, 10, 8, 20, 4); ctx.fill();
-    ctx.beginPath(); ctx.roundRect(12, -5, 8, 20, 4); ctx.fill();
-
-    ctx.fillStyle = "#FFDFC4";
-    ctx.beginPath(); ctx.arc(0, -15, 14, 0, Math.PI * 2); ctx.fill();
-
-    ctx.fillStyle = "#2C3E50";
-    ctx.beginPath(); ctx.arc(0, -18, 14, Math.PI, 0); ctx.fill();
-    ctx.fillStyle = "#FFF";
-    ctx.beginPath(); ctx.arc(-6, -16, 4, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(6, -16, 4, 0, Math.PI * 2); ctx.fill();
-
-    ctx.fillStyle = "#5C4033";
-    ctx.beginPath(); ctx.moveTo(-12, -25); ctx.lineTo(-5, -35); ctx.lineTo(0, -25); ctx.fill();
-    ctx.restore();
-  }
-
-  function drawMedal(ctx, x, y, scale) {
-    ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
-    ctx.fillStyle = "#C0392B"; ctx.beginPath(); ctx.moveTo(-8, -30); ctx.lineTo(8, -30); ctx.lineTo(0, -5); ctx.fill();
-    ctx.fillStyle = "#E74C3C"; ctx.beginPath(); ctx.moveTo(-8, -30); ctx.lineTo(0, -20); ctx.lineTo(-8, -5); ctx.fill();
-    const gradientGold = ctx.createRadialGradient(-5, -5, 2, 0, 0, 15);
-    gradientGold.addColorStop(0, "#F9E79F"); gradientGold.addColorStop(0.5, "#F1C40F"); gradientGold.addColorStop(1, "#B7950B");
-    ctx.fillStyle = gradientGold; ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#D4AC0D"; ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+    // Костюм
+    ctx.fillStyle = "#3498DB"; ctx.beginPath(); ctx.roundRect(-15, 0, 30, 45, 8); ctx.fill();
+    // Голова
+    ctx.fillStyle = "#FFDFC4"; ctx.beginPath(); ctx.arc(0, -15, 14, 0, Math.PI * 2); ctx.fill();
+    // Маска
+    ctx.fillStyle = "#2C3E50"; ctx.beginPath(); ctx.arc(0, -18, 14, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = "#FFF"; ctx.beginPath(); ctx.arc(-6, -16, 4, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(6, -16, 4, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
 
   function animate() {
-    ctx.fillStyle = "#87CEEB"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const sunGrad = ctx.createRadialGradient(500, 60, 10, 500, 60, 40);
-    sunGrad.addColorStop(0, "#FFF9C4"); sunGrad.addColorStop(1, "#FBC02D");
-    ctx.fillStyle = sunGrad; ctx.beginPath(); ctx.arc(500, 60, 30 + Math.sin(t*0.05)*5, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = "#27AE60"; ctx.beginPath(); ctx.moveTo(0, 280); ctx.quadraticCurveTo(300, 230, 600, 280); ctx.lineTo(600, 350); ctx.lineTo(0, 350); ctx.fill();
-    const pedGrad = ctx.createLinearGradient(0, 250, 0, 350);
-    pedGrad.addColorStop(0, "#BDC3C7"); pedGrad.addColorStop(1, "#7F8C8D");
-    ctx.fillStyle = pedGrad; ctx.fillRect(350, 250, 100, 100);
-    ctx.fillStyle = "#95A5A6"; ctx.fillRect(340, 240, 120, 10);
+    ctx.fillStyle = bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Солнце
+    ctx.fillStyle = "#FFF9C4"; ctx.beginPath(); ctx.arc(500, 60, 30 + Math.sin(t*0.05)*5, 0, Math.PI*2); ctx.fill();
+    
+    // Земля
+    ctx.fillStyle = groundColor; 
+    ctx.beginPath(); ctx.moveTo(0, 280); ctx.quadraticCurveTo(300, 230, 600, 280); ctx.lineTo(600, 350); ctx.lineTo(0, 350); ctx.fill();
+    
+    // Гора
+    ctx.fillStyle = mountainColor; 
+    ctx.beginPath(); ctx.moveTo(200, 300); ctx.lineTo(400, 150); ctx.lineTo(600, 300); ctx.fill();
 
-    if (t < 80) {
-      const jump = Math.sin((t / 80) * Math.PI) * 50;
-      drawSuperFedia(ctx, 400, 240 - jump, 1.5, t);
-    } else {
-      drawSuperFedia(ctx, 400, 240, 1.5, 0);
-      if (t > 80) {
-        let fixikX = 150 + ((t - 80) / 70) * 180;
-        if (fixikX > 330) fixikX = 330;
-        let walkBob = 0;
-        if (t < 150) walkBob = Math.abs(Math.sin(t * 0.2)) * 5;
-        if (fixikImg.complete && fixikImg.naturalWidth > 0) ctx.drawImage(fixikImg, fixikX, 200 - walkBob, 80, 80);
-        else { ctx.fillStyle = "#00BFFF"; ctx.beginPath(); ctx.arc(fixikX + 40, 240, 30, 0, Math.PI * 2); ctx.fill(); }
-        if (t > 150) {
-           const medalProgress = Math.min((t - 150) / 40, 1);
-           const startX = 330 + 40, startY = 200; 
-           const endX = 400, endY = 240 - 15;
-           const mx = startX + (endX - startX) * medalProgress;
-           const my = startY + (endY - startY) * medalProgress - Math.sin(medalProgress * Math.PI) * 30;
-           drawMedal(ctx, mx, my, medalProgress);
-        }
+    // Пьедестал
+    ctx.fillStyle = "#BDC3C7"; ctx.fillRect(350, 250, 100, 100);
+    
+    // Федя прыгает на вершине
+    const jump = Math.max(0, Math.sin(t * 0.1) * 20);
+    drawSuperFedia(ctx, 400, 230 - jump, 1.5);
+
+    // Фиксик приносит награду (появляется с 60 кадра)
+    if (t > 60) {
+      let fixikX = 150 + ((t - 60) / 40) * 180;
+      if (fixikX > 330) fixikX = 330;
+      
+      if (fixikImg.complete && fixikImg.naturalWidth > 0) {
+        ctx.drawImage(fixikImg, fixikX, 200, 80, 80);
+      } else {
+        ctx.fillStyle = "#00BFFF"; ctx.beginPath(); ctx.arc(fixikX + 40, 240, 30, 0, Math.PI * 2); ctx.fill();
       }
-    }
-
-    if (t > 200) {
-        if (t % 15 === 0) {
-            const colors = ["#FF5733", "#33FF57", "#3357FF", "#F1C40F", "#9B59B6"];
-            ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
-            for (let i = 0; i < 15; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const dist = Math.random() * 80 + 20;
-                ctx.beginPath();
-                ctx.arc(400 + Math.cos(angle) * dist, 100 + Math.sin(angle) * dist, 4, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-        ctx.font = "900 32px Arial"; ctx.textAlign = "center"; ctx.lineWidth = 6;
-        ctx.strokeStyle = "#fff"; ctx.strokeText("СУПЕРГЕРОЙ!", canvas.width / 2, 60);
-        ctx.fillStyle = "#E74C3C"; ctx.fillText("СУПЕРГЕРОЙ!", canvas.width / 2, 60);
+      
+      // Летящая награда
+      if (t > 100) {
+        const rewardProgress = Math.min((t - 100) / 30, 1);
+        const rx = 330 + 40 + (400 - (330 + 40)) * rewardProgress;
+        const ry = 200 + (230 - 200) * rewardProgress - Math.sin(rewardProgress * Math.PI) * 40;
+        
+        const rewardItem = LESSONS_LIST.find(l => l.id === lessonId).reward;
+        ctx.font = "36px Arial"; ctx.textAlign = "center";
+        ctx.fillText(rewardItem, rx, ry);
+      }
     }
 
     t++;
@@ -528,7 +525,7 @@ function render() {
   else if (stage === "done") drawDone();
 }
 
-// ---------- СТАРТ ----------
+// СТАРТ
 const savedProgress = Progress.load();
 if (savedProgress.diagnostic_passed) {
   stage = "home"; 
